@@ -3,7 +3,7 @@
 **Premium Mobility Tools for Roblox**  
 *The Ultimate Movement Script*
 
-![Version](https://img.shields.io/badge/Version-1.2-blue?style=flat-square)
+![Version](https://img.shields.io/badge/Version-1.0-blue?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-PC%20%26%20Mobile-purple?style=flat-square)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square)
 
@@ -43,7 +43,7 @@
 2. Paste script berikut:
 
 ```lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/YOURUSERNAME/Apex-Destroyer/main/apex.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Farelmosw-ux/apx/main/apex.lua"))()
 
 🎮 Controls
 Fly Toggle → Tekan tombol F (PC)
