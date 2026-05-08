@@ -9,7 +9,35 @@ local Lighting             = game:GetService("Lighting")
 local TeleportService      = game:GetService("TeleportService")
 
 local player = Players.LocalPlayer
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+
+-- ============================================
+-- WINDUI LOADER (FIX ERROR LINE 1)
+-- ============================================
+local WindUI = nil
+
+local function loadWindUI()
+    local urls = {
+        "https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua",
+        "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua",
+        "https://raw.githubusercontent.com/Footagesus/WindUI/main/main.lua"
+    }
+    
+    for _, url in ipairs(urls) do
+        local success, result = pcall(function()
+            return loadstring(game:HttpGet(url))()
+        end)
+        if success and result then
+            WindUI = result
+            print("✅ WindUI loaded from:", url)
+            return true
+        end
+    end
+    return false
+end
+
+if not loadWindUI() then
+    error("❌ Failed to load WindUI. Try restarting executor or use Solara/Wave.")
+end
 
 -- Anti-Kick
 local mt = getrawmetatable(game)
@@ -66,47 +94,33 @@ HomeTab:Paragraph({
     Content = "Premium Mobility Tools\nVersion : 1.2\nExecutor : " .. executor
 })
 
--- Discord Button dengan Icon Discord
 HomeTab:Button({
     Title = "Copy Discord",
-    Icon  = "message-circle",   -- Icon Discord style
+    Icon  = "message-circle",
     Callback = function()
-        local discordLink = "https://discord.gg/fareldestroyer."   -- GANTI DENGAN LINK DISCORD KAMU
+        local discordLink = "https://discord.gg/fareldestroyer"  
         if setclipboard then
             setclipboard(discordLink)
-            WindUI:Notify({
-                Title = "Copied!",
-                Content = "Discord link has been copied",
-                Icon = "check",
-                Duration = 3
-            })
+            WindUI:Notify({ Title = "Copied!", Content = "Discord link copied to clipboard", Icon = "check", Duration = 3 })
         else
-            WindUI:Notify({
-                Title = "Discord Link",
-                Content = discordLink,
-                Duration = 6
-            })
+            WindUI:Notify({ Title = "Discord Link", Content = discordLink, Duration = 6 })
         end
     end
 })
 
--- Rejoin Server
 HomeTab:Button({
     Title = "Rejoin Server",
     Icon  = "refresh-cw",
     Callback = function()
-        WindUI:Notify({
-            Title = "Rejoining...",
-            Content = "Teleporting back to the server in 3 seconds",
-            Duration = 3
-        })
-        
-        -- Jeda sesuai logika Opsi 3 (total 3 detik)
-        task.wait(3) 
-        
-        -- Eksekusi Rejoin
+        WindUI:Notify({ Title = "Rejoining...", Content = "Please wait...", Duration = 3 })
+        task.wait(2)
         TeleportService:Teleport(game.PlaceId, player)
     end
+})
+
+HomeTab:Paragraph({
+    Title   = "Note",
+    Content = "Enjoy the best mobility experience with Apex Destroyer"
 })
 
 -- ============================================
@@ -346,6 +360,7 @@ TeleportTab:Button({
     end
 })
 
+-- Auto Refresh every 5 minutes
 task.spawn(function()
     while true do
         task.wait(300)
