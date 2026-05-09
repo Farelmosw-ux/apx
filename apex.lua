@@ -10,6 +10,9 @@ local Lighting             = game:GetService("Lighting")
 local TeleportService      = game:GetService("TeleportService")
 
 local player = Players.LocalPlayer
+local username = player.Name
+local displayname = player.DisplayName
+local userid = player.UserId
 
 -- WindUI
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
@@ -31,6 +34,12 @@ local Window = WindUI:CreateWindow({
     Folder       = "apex_destroyer",
     SideBarWidth = 190,
     ScrollBarEnabled = true
+})
+
+HomeTab:Paragraph({
+    Title = "Welcome, " .. displayname,
+    Content = "@" .. username,
+    Image = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. userid .. "&width=420&height=420&format=png"
 })
 
 Window:SetBackgroundImage("rbxassetid://76527064525832")
@@ -384,9 +393,7 @@ local function toggleAntiLag(state)
         Lighting.GlobalShadows = false
         Lighting.FogEnd = 100000
         Lighting.Technology = Enum.Technology.Compatibility
-        settings().Rendering.QualityLevel = 1
-        
-        WindUI:Notify({ Title = "Anti-Lag ON", Content = "Performance mode activated", Icon = "check" })
+        settings().Rendering.QualityLevel = 1        
     else
         Lighting.Brightness = originalSettings.Brightness or 1
         Lighting.ClockTime = originalSettings.ClockTime or 14
@@ -394,7 +401,6 @@ local function toggleAntiLag(state)
         Lighting.FogEnd = originalSettings.FogEnd or 100000
         Lighting.Technology = Enum.Technology.Future
         settings().Rendering.QualityLevel = 10
-        WindUI:Notify({ Title = "Anti-Lag OFF", Content = "Normal settings restored", Icon = "x" })
     end
 end
 
@@ -480,43 +486,6 @@ fpsBoostToggle = SettingTab:Toggle({
         if fpsBoostToggle then
             fpsBoostToggle:SetTitle(
                 "FPS Booster Extreme (" .. (v and "Active" or "Inactive") .. ")"
-            )
-        end
-    end
-})
-
--- ============================================
--- AUTO LOW GFX
--- ============================================
-
-local lowGfxToggle = nil
-
-local function setLowGFX(state)
-    if state then
-        settings().Rendering.QualityLevel = 1
-
-        for _, v in ipairs(workspace:GetDescendants()) do
-            pcall(function()
-                if v:IsA("BasePart") then
-                    v.Material = Enum.Material.SmoothPlastic
-                    v.Reflectance = 0
-                end
-            end)
-        end
-    else
-        settings().Rendering.QualityLevel = 10
-    end
-end
-
-lowGfxToggle = SettingTab:Toggle({
-    Title = "Auto Low GFX (Inactive)",
-    Value = false,
-    Callback = function(v)
-        setLowGFX(v)
-
-        if lowGfxToggle then
-            lowGfxToggle:SetTitle(
-                "Auto Low GFX (" .. (v and "Active" or "Inactive") .. ")"
             )
         end
     end
