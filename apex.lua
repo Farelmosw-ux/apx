@@ -305,8 +305,8 @@ local dropdown = nil
 local function getPlayerNames()
     local names = {}
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr \~= player then 
-            table.insert(names, plr.Name) 
+        if plr ~= player then
+            table.insert(names, plr.Name)
         end
     end
     table.sort(names, function(a,b) return a:lower() < b:lower() end)
