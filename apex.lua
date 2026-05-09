@@ -36,12 +36,6 @@ local Window = WindUI:CreateWindow({
     ScrollBarEnabled = true
 })
 
-HomeTab:Paragraph({
-    Title = "Welcome, " .. displayname,
-    Content = "@" .. username,
-    Image = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. userid .. "&width=420&height=420&format=png"
-})
-
 Window:SetBackgroundImage("rbxassetid://76527064525832")
 Window:SetBackgroundImageTransparency(0.85)
 
@@ -66,6 +60,13 @@ local HomeTab       = Window:Tab({ Title = "Home", Icon = "house" })
 local PlayerMenuTab = Window:Tab({ Title = "Player Menu", Icon = "swords" })
 local TeleportTab   = Window:Tab({ Title = "Teleport Menu", Icon = "map-pin" })
 local SettingTab   = Window:Tab({ Title = "Settings", Icon = "map-pin" })
+
+-- Detect
+HomeTab:Paragraph({
+    Title = "Welcome, " .. displayname,
+    Content = "@" .. username,
+    Image = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. userid .. "&width=420&height=420&format=png"
+})
 
 -- Function Window Select
 task.wait()
