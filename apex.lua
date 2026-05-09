@@ -13,6 +13,12 @@ local player = Players.LocalPlayer
 -- WindUI
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
+-- scale notify
+if game:GetService("UserInputService").TouchEnabled then
+    local UIScale = Instance.new("UIScale")
+    UIScale.Scale = 0.82
+    UIScale.Parent = game.CoreGui
+end
 -- Anti-Kick
 local mt = getrawmetatable(game)
 setreadonly(mt, false)
