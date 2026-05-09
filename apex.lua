@@ -10,9 +10,7 @@ local TeleportService      = game:GetService("TeleportService")
 
 local player = Players.LocalPlayer
 
--- ============================================
--- WINDUI LOADER (STABLE)
--- ============================================
+-- WindUI Loader
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
 -- Anti-Kick
@@ -223,8 +221,8 @@ end)
 PlayerMenuTab:Section({ Title = "Walk Speed" })
 
 local wsEnabled = false
-local wsValue = 0
-local wsToggle = nil
+local wsValue   = 0
+local wsToggle  = nil
 
 task.spawn(function()
     while true do
@@ -244,7 +242,7 @@ wsToggle = PlayerMenuTab:Toggle({
         wsEnabled = v
         if wsToggle then wsToggle:SetTitle("Walk Speed (" .. (v and "Active" or "Inactive") .. ")") end
         if not v then pcall(function() getHum().WalkSpeed = 16 end) end
-        WindUI:Notify({ Title = v and "WalkSpeed ON" or "WalkSpeed OFF", Content = v and "Super speed activated" or "Reset to default" })
+        WindUI:Notify({ Title = v and "WalkSpeed ON" or "WalkSpeed OFF", Content = v and "Speed activated" or "Reset to default" })
     end
 })
 
@@ -261,8 +259,8 @@ PlayerMenuTab:Slider({
 PlayerMenuTab:Section({ Title = "Jump Power" })
 
 local jpEnabled = false
-local jpValue = 0
-local jpToggle = nil
+local jpValue   = 0
+local jpToggle  = nil
 
 task.spawn(function()
     while true do
@@ -286,7 +284,7 @@ jpToggle = PlayerMenuTab:Toggle({
         jpEnabled = v
         if jpToggle then jpToggle:SetTitle("Jump Power (" .. (v and "Active" or "Inactive") .. ")") end
         if not v then pcall(function() getHum().JumpPower = 50 end) end
-        WindUI:Notify({ Title = v and "JumpPower ON" or "JumpPower OFF", Content = v and "Super jump activated" or "Reset to default" })
+        WindUI:Notify({ Title = v and "JumpPower ON" or "JumpPower OFF", Content = v and "Jump activated" or "Reset to default" })
     end
 })
 
@@ -349,7 +347,7 @@ TeleportTab:Button({
     end
 })
 
--- Auto Refresh every 5 minutes
+-- Auto Refresh
 task.spawn(function()
     while true do
         task.wait(300)
