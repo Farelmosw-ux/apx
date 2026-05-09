@@ -10,7 +10,7 @@ local TeleportService      = game:GetService("TeleportService")
 
 local player = Players.LocalPlayer
 
--- WindUI Loader
+-- WindUI
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
 -- Anti-Kick
@@ -75,7 +75,7 @@ HomeTab:Button({
         local discordLink = "https://discord.gg/fareldestroyer"
         if setclipboard then
             setclipboard(discordLink)
-            WindUI:Notify({ Title = "Copied!", Content = "Discord link copied to clipboard", Icon = "check", Duration = 3 })
+            WindUI:Notify({ Title = "Copied!", Content = "Discord link copied", Icon = "check", Duration = 3 })
         else
             WindUI:Notify({ Title = "Discord Link", Content = discordLink, Duration = 6 })
         end
@@ -93,7 +93,7 @@ HomeTab:Button({
 })
 
 -- ============================================
--- HELPER FUNCTIONS
+-- HELPER
 -- ============================================
 local function getChar()  return player.Character or player.CharacterAdded:Wait() end
 local function getHum()   return getChar():WaitForChild("Humanoid") end
@@ -199,22 +199,6 @@ PlayerMenuTab:Paragraph({
     Content = "PC   : WASD + Space (Up) + C (Down)\nMobile : Joystick"
 })
 
--- F Keybind
-UIS.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.F then
-        local newState = not flyEnabled
-        setFly(newState)
-        pcall(function() flyToggle:SetValue(newState) end)
-    end
-end)
-
-player.CharacterAdded:Connect(function()
-    task.wait(1)
-    smoothVel = Vector3.zero
-    if flyEnabled then startFly() else cleanFly() end
-end)
-
 -- ============================================
 -- WALK SPEED
 -- ============================================
@@ -296,7 +280,7 @@ PlayerMenuTab:Slider({
 })
 
 -- ============================================
--- TELEPORT TAB
+-- TELEPORT
 -- ============================================
 TeleportTab:Section({ Title = "Player Teleport" })
 
@@ -347,21 +331,8 @@ TeleportTab:Button({
     end
 })
 
--- Auto Refresh
-task.spawn(function()
-    while true do
-        task.wait(300)
-        applyDropdownOptions()
-    end
-end)
-
-Players.PlayerAdded:Connect(function() task.wait(0.5); applyDropdownOptions() end)
-Players.PlayerRemoving:Connect(function() task.wait(0.1); applyDropdownOptions() end)
-
-task.delay(1, applyDropdownOptions)
-
 -- ============================================
--- SETTINGS (Anti-Lag)
+-- SETTINGS
 -- ============================================
 PlayerMenuTab:Section({ Title = "Settings" })
 
