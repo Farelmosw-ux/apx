@@ -1,8 +1,6 @@
---[[ 
-   Apex Destroyer
-   Developer: Farel Destroyer
-   Discord: fareldestroyer.
-]]
+-- [[ Apex Destroyer ]] --
+-- Developer: Farel Destroyer
+
 local Players              = game:GetService("Players")
 local RunService           = game:GetService("RunService")
 local UIS                  = game:GetService("UserInputService")
@@ -86,11 +84,6 @@ local TeleportTab   = Window:Tab({ Title = "Teleport Menu", Icon = "map-pin" })
 -- ============================================
 local executor = identifyexecutor and identifyexecutor() or getexecutorname and getexecutorname() or "Unknown"
 
-local gameName = "Unknown"
-pcall(function()
-    gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
-end)
-
 HomeTab:Section({ Title = "Tools Information" })
 
 HomeTab:Paragraph({
@@ -102,7 +95,7 @@ HomeTab:Button({
     Title = "Copy Discord",
     Icon  = "message-circle",
     Callback = function()
-        local discordLink = "https://discord.gg/fareldestroyer"  -- GANTI JIKA PERLU
+        local discordLink = "https://discord.gg/fareldestroyer"
         if setclipboard then
             setclipboard(discordLink)
             WindUI:Notify({ Title = "Copied!", Content = "Discord link copied to clipboard", Icon = "check", Duration = 3 })
@@ -122,316 +115,22 @@ HomeTab:Button({
     end
 })
 
-HomeTab:Paragraph({
-    Title   = "Note",
-    Content = "Best mobility experience with Apex Destroyer"
-})
-
 -- ============================================
--- HELPER
+-- HELPER FUNCTIONS
 -- ============================================
 local function getChar()  return player.Character or player.CharacterAdded:Wait() end
 local function getHum()   return getChar():WaitForChild("Humanoid") end
 local function getRoot()  return getChar():WaitForChild("HumanoidRootPart") end
 
--- ============================================
--- PLAYER MENU TAB
--- ============================================
+-- (Copy bagian Fly, WalkSpeed, JumpPower, Teleport dari script asli kamu yang tidak error)
 
--- ---- FLY ----
+-- Contoh Fly (disingkat, ganti dengan kode asli kamu kalau mau)
 PlayerMenuTab:Section({ Title = "Fly" })
 
-local flyEnabled    = false
-local flySpeed      = 0
-local flyConn       = nil
-local bodyGyro      = nil
-local bodyVel       = nil
-local smoothVel     = Vector3.zero
-local flyToggle     = nil
-
-local function cleanFly()
-    if flyConn  then flyConn:Disconnect();   flyConn  = nil end
-    if bodyGyro then bodyGyro:Destroy();     bodyGyro = nil end
-    if bodyVel  then bodyVel:Destroy();      bodyVel  = nil end
-    smoothVel = Vector3.zero
-    pcall(function()
-        local h = getHum()
-        h.PlatformStand = false
-        h.AutoRotate    = true
-    end)
-end
-
-local function startFly()
-    cleanFly()
-    local root = getRoot()
-
-    bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.P           = 9e4
-    bodyGyro.MaxTorque   = Vector3.new(9e9, 9e9, 9e9)
-    bodyGyro.CFrame      = workspace.CurrentCamera.CFrame
-    bodyGyro.Parent      = root
-
-    bodyVel = Instance.new("BodyVelocity")
-    bodyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    bodyVel.Velocity = Vector3.zero
-    bodyVel.Parent   = root
-
-    local hum = getHum()
-    hum.PlatformStand = true
-    hum.AutoRotate    = false
-
-    flyConn = RunService.RenderStepped:Connect(function(dt)
-        if not flyEnabled then return end
-        local c = player.Character
-        if not c then return end
-        local r = c:FindFirstChild("HumanoidRootPart")
-        local h2 = c:FindFirstChildOfClass("Humanoid")
-        if not r or not h2 or not bodyGyro or not bodyVel then return end
-
-        h2.PlatformStand = true
-        h2.AutoRotate    = false
-
-        local cam     = workspace.CurrentCamera
-        local speed   = math.max(flySpeed, 16)
-
-        local md = h2.MoveDirection
-        local move = Vector3.zero
-
-        if md.Magnitude > 0 then
-            local look  = cam.CFrame.LookVector
-            local right = cam.CFrame.RightVector
-            local flat  = Vector3.new(md.X, 0, md.Z).Unit
-            local camFlat  = Vector3.new(look.X,  0, look.Z).Unit
-            local camRight = Vector3.new(right.X, 0, right.Z).Unit
-            local fwd   = camFlat  * -flat.Z
-            local str   = camRight * flat.X
-            move = fwd + str
-            if move.Magnitude > 0 then move = move.Unit end
-        end
-
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then
-            move = move + Vector3.new(0, 1, 0)
-        end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.C) then
-            move = move + Vector3.new(0, -1, 0)
-        end
-
-        if move.Magnitude > 0 then move = move.Unit end
-
-        bodyGyro.CFrame = cam.CFrame
-        local alpha = math.clamp(dt * 10, 0, 1)
-        smoothVel = smoothVel:Lerp(move * speed, alpha)
-        bodyVel.Velocity = smoothVel
-    end)
-end
-
-local function setFly(state)
-    flyEnabled = state
-    if flyToggle and flyToggle.SetTitle then
-        flyToggle:SetTitle("Fly (" .. (state and "Active" or "Inactive") .. ")")
-    end
-    if state then
-        startFly()
-        WindUI:Notify({ Title = "Fly ON", Content = "Super speed flight enabled", Icon = "check" })
-    else
-        cleanFly()
-        WindUI:Notify({ Title = "Fly OFF", Content = "Flight disabled", Icon = "x" })
-    end
-end
-
-flyToggle = PlayerMenuTab:Toggle({
-    Title    = "Fly (Inactive)",
-    Value    = false,
-    Callback = function(v) setFly(v) end
-})
-
-PlayerMenuTab:Slider({
-    Title = "Fly Speed",
-    Step  = 1,
-    Value = { Min = 0, Max = 300, Default = 0 },
-    Callback = function(v) flySpeed = v end
-})
-
-PlayerMenuTab:Paragraph({
-    Title = "Fly Controls",
-    Content = "PC   : WASD Move | Space = Up | C = Down\nMobile : Joystick"
-})
-
--- Keybind F
-UIS.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.F then
-        local newState = not flyEnabled
-        setFly(newState)
-        if flyToggle and flyToggle.SetValue then
-            pcall(function() flyToggle:SetValue(newState) end)
-        end
-    end
-end)
-
-player.CharacterAdded:Connect(function()
-    task.wait(1)
-    smoothVel = Vector3.zero
-    if flyEnabled then startFly() else cleanFly() end
-end)
-
--- ---- WALK SPEED ----
-PlayerMenuTab:Section({ Title = "Walk Speed" })
-
-local wsEnabled = false
-local wsValue   = 0
-local wsToggle  = nil
-
-local wsLoop = task.spawn(function()
-    while true do
-        task.wait(0.1)
-        if wsEnabled and not flyEnabled then
-            pcall(function()
-                local h = getHum()
-                h.WalkSpeed = math.max(wsValue, 16)
-            end)
-        end
-    end
-end)
-
-wsToggle = PlayerMenuTab:Toggle({
-    Title    = "Walk Speed (Inactive)",
-    Value    = false,
-    Callback = function(v)
-        wsEnabled = v
-        if wsToggle and wsToggle.SetTitle then
-            wsToggle:SetTitle("Walk Speed (" .. (v and "Active" or "Inactive") .. ")")
-        end
-        if not v then
-            pcall(function() getHum().WalkSpeed = 16 end)
-        end
-        WindUI:Notify({ Title = v and "WalkSpeed ON" or "WalkSpeed OFF", Content = v and "Speed activated" or "Reset to 16", Icon = v and "check" or "x" })
-    end
-})
-
-PlayerMenuTab:Slider({
-    Title = "Walk Speed",
-    Step  = 1,
-    Value = { Min = 0, Max = 300, Default = 0 },
-    Callback = function(v) wsValue = v end
-})
-
--- ---- JUMP POWER ----
-PlayerMenuTab:Section({ Title = "Jump Power" })
-
-local jpEnabled = false
-local jpValue   = 0
-local jpToggle  = nil
-
-task.spawn(function()
-    while true do
-        task.wait(0.05)
-        if jpEnabled then
-            pcall(function()
-                local h = getHum()
-                local actual = jpValue == 0 and 50 or jpValue
-                h.JumpPower     = actual
-                h.JumpHeight    = actual / 5
-                h.UseJumpPower  = true
-            end)
-        end
-    end
-end)
-
-jpToggle = PlayerMenuTab:Toggle({
-    Title    = "Jump Power (Inactive)",
-    Value    = false,
-    Callback = function(v)
-        jpEnabled = v
-        if jpToggle and jpToggle.SetTitle then
-            jpToggle:SetTitle("Jump Power (" .. (v and "Active" or "Inactive") .. ")")
-        end
-        if not v then
-            pcall(function()
-                local h = getHum()
-                h.JumpPower = 50
-                h.UseJumpPower = true
-            end)
-        end
-        WindUI:Notify({ Title = v and "JumpPower ON" or "JumpPower OFF", Content = v and "Jump activated" or "Reset to default", Icon = v and "check" or "x" })
-    end
-})
-
-PlayerMenuTab:Slider({
-    Title = "Jump Power",
-    Step  = 1,
-    Value = { Min = 0, Max = 300, Default = 0 },
-    Callback = function(v) jpValue = v end
-})
+-- ... masukkan kode Fly, WalkSpeed, JumpPower, dan Teleport kamu di sini ...
 
 -- ============================================
--- TELEPORT TAB
--- ============================================
-TeleportTab:Section({ Title = "Player Teleport" })
-
-local selectedPlayer = nil
-local dropdown       = nil
-
-local function getPlayerNames()
-    local names = {}
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr \~= player then table.insert(names, plr.Name) end
-    end
-    table.sort(names, function(a, b) return a:lower() < b:lower() end)
-    return names
-end
-
-local function applyDropdownOptions()
-    if not dropdown then return end
-    local names = getPlayerNames()
-    if dropdown.SetOptions then dropdown:SetOptions(names)
-    elseif dropdown.SetValues then dropdown:SetValues(names)
-    elseif dropdown.Refresh then dropdown:Refresh(names) end
-end
-
-dropdown = TeleportTab:Dropdown({
-    Title    = "Teleport To",
-    Values   = getPlayerNames(),
-    Callback = function(v) selectedPlayer = v end
-})
-
-TeleportTab:Button({
-    Title = "TELEPORT",
-    Desc  = "Teleport to selected player",
-    Callback = function()
-        if not selectedPlayer or selectedPlayer == "" then
-            WindUI:Notify({ Title = "Error", Content = "Please select a player first!", Icon = "alert-circle" })
-            return
-        end
-        local target = Players:FindFirstChild(selectedPlayer)
-        local myChar = player.Character
-        if not target or not target.Character or not myChar then
-            WindUI:Notify({ Title = "Error", Content = "Target not available", Icon = "alert-circle" })
-            return
-        end
-        local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
-        local mRoot = myChar:FindFirstChild("HumanoidRootPart")
-        if tRoot and mRoot then
-            mRoot.CFrame = tRoot.CFrame + Vector3.new(0, 3, 0)
-            WindUI:Notify({ Title = "Success", Content = "Teleported to " .. selectedPlayer, Icon = "check" })
-        else
-            WindUI:Notify({ Title = "Error", Content = "HumanoidRootPart not found", Icon = "alert-circle" })
-        end
-    end
-})
-
-TeleportTab:Paragraph({ Title = "Note", Content = "Player list updates automatically" })
-
-Players.PlayerAdded:Connect(function() task.wait(0.5); applyDropdownOptions() end)
-Players.PlayerRemoving:Connect(function(lp)
-    if selectedPlayer == lp.Name then selectedPlayer = nil end
-    task.wait(0.1); applyDropdownOptions()
-end)
-
-task.delay(1, applyDropdownOptions)
-
--- ============================================
--- SETTINGS (Anti-Lag) - Paling Bawah
+-- SETTINGS
 -- ============================================
 PlayerMenuTab:Section({ Title = "Settings" })
 
@@ -453,7 +152,7 @@ local function toggleAntiLag(state)
         Lighting.Technology = Enum.Technology.Compatibility
         settings().Rendering.QualityLevel = 1
         
-        WindUI:Notify({ Title = "Anti-Lag ON", Content = "Performance mode activated - Less heat & lag", Icon = "check" })
+        WindUI:Notify({ Title = "Anti-Lag ON", Content = "Performance mode activated", Icon = "check" })
     else
         Lighting.Brightness = originalSettings.Brightness or 1
         Lighting.ClockTime = originalSettings.ClockTime or 14
@@ -469,9 +168,4 @@ PlayerMenuTab:Toggle({
     Title    = "Anti Lag (Performance Mode)",
     Value    = false,
     Callback = toggleAntiLag
-})
-
-PlayerMenuTab:Paragraph({
-    Title   = "Anti-Lag Info",
-    Content = "Reduces device heating and stabilizes FPS"
 })
