@@ -10,7 +10,7 @@ local TeleportService      = game:GetService("TeleportService")
 
 local player = Players.LocalPlayer
 
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua", true))()
 
 -- Anti-Kick
 local mt = getrawmetatable(game)
