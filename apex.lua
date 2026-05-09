@@ -1,5 +1,8 @@
--- [[ Apex Destroyer ]] --
--- Developer: Farel Destroyer
+--[[ 
+   Apex Destroyer
+   Developer: Farel Destroyer
+   Discord: fareldestroyer.
+]]
 
 local Players              = game:GetService("Players")
 local RunService           = game:GetService("RunService")
