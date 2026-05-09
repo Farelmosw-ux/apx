@@ -75,7 +75,7 @@ HomeTab:Button({
         local discordLink = "https://discord.gg/fareldestroyer"
         if setclipboard then
             setclipboard(discordLink)
-            WindUI:Notify({ Title = "Copied!", Content = "Discord link copied", Icon = "check", Duration = 3 })
+            WindUI:Notify({ Title = "Copied!", Content = "Discord link copied to clipboard", Icon = "check", Duration = 3 })
         else
             WindUI:Notify({ Title = "Discord Link", Content = discordLink, Duration = 6 })
         end
@@ -199,6 +199,21 @@ PlayerMenuTab:Paragraph({
     Content = "PC   : WASD + Space (Up) + C (Down)\nMobile : Joystick"
 })
 
+UIS.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        local newState = not flyEnabled
+        setFly(newState)
+        pcall(function() flyToggle:SetValue(newState) end)
+    end
+end)
+
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    smoothVel = Vector3.zero
+    if flyEnabled then startFly() else cleanFly() end
+end)
+
 -- ============================================
 -- WALK SPEED
 -- ============================================
@@ -280,7 +295,7 @@ PlayerMenuTab:Slider({
 })
 
 -- ============================================
--- TELEPORT
+-- TELEPORT TAB
 -- ============================================
 TeleportTab:Section({ Title = "Player Teleport" })
 
@@ -290,7 +305,9 @@ local dropdown = nil
 local function getPlayerNames()
     local names = {}
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr \~= player then table.insert(names, plr.Name) end
+        if plr \~= player then 
+            table.insert(names, plr.Name) 
+        end
     end
     table.sort(names, function(a,b) return a:lower() < b:lower() end)
     return names
@@ -299,9 +316,13 @@ end
 local function applyDropdownOptions()
     if not dropdown then return end
     local names = getPlayerNames()
-    if dropdown.SetOptions then dropdown:SetOptions(names)
-    elseif dropdown.SetValues then dropdown:SetValues(names)
-    elseif dropdown.Refresh then dropdown:Refresh(names) end
+    if dropdown.SetOptions then 
+        dropdown:SetOptions(names)
+    elseif dropdown.SetValues then 
+        dropdown:SetValues(names)
+    elseif dropdown.Refresh then 
+        dropdown:Refresh(names) 
+    end
 end
 
 dropdown = TeleportTab:Dropdown({
@@ -330,6 +351,19 @@ TeleportTab:Button({
         end
     end
 })
+
+-- Auto Refresh
+task.spawn(function()
+    while true do
+        task.wait(300)
+        applyDropdownOptions()
+    end
+end)
+
+Players.PlayerAdded:Connect(function() task.wait(0.5); applyDropdownOptions() end)
+Players.PlayerRemoving:Connect(function() task.wait(0.1); applyDropdownOptions() end)
+
+task.delay(1, applyDropdownOptions)
 
 -- ============================================
 -- SETTINGS
