@@ -56,6 +56,13 @@ local HomeTab       = Window:Tab({ Title = "Home", Icon = "house" })
 local PlayerMenuTab = Window:Tab({ Title = "Player Menu", Icon = "swords" })
 local TeleportTab   = Window:Tab({ Title = "Teleport Menu", Icon = "map-pin" })
 
+-- Function Window Select
+task.wait()
+
+pcall(function()
+    HomeTab:Select()
+end)
+
 -- ============================================
 -- HOME TAB
 -- ============================================
