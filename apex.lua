@@ -11,30 +11,9 @@ local TeleportService      = game:GetService("TeleportService")
 local player = Players.LocalPlayer
 
 -- ============================================
--- WINDUI LOADER (SUPER STABLE)
+-- WINDUI LOADER (STABLE)
 -- ============================================
-local WindUI = nil
-
-local urls = {
-    "https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua",
-    "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua",
-    "https://raw.githubusercontent.com/Footagesus/WindUI/main/main.lua"
-}
-
-for _, url in ipairs(urls) do
-    local success, result = pcall(function()
-        return loadstring(game:HttpGet(url, true))()
-    end)
-    if success and result then
-        WindUI = result
-        print("✅ WindUI Loaded Successfully!")
-        break
-    end
-end
-
-if not WindUI then
-    error("❌ WindUI gagal load. Coba restart executor atau ganti executor (Solara/Wave recommended)")
-end
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
 -- Anti-Kick
 local mt = getrawmetatable(game)
@@ -122,15 +101,269 @@ local function getChar()  return player.Character or player.CharacterAdded:Wait(
 local function getHum()   return getChar():WaitForChild("Humanoid") end
 local function getRoot()  return getChar():WaitForChild("HumanoidRootPart") end
 
--- (Copy bagian Fly, WalkSpeed, JumpPower, Teleport dari script asli kamu yang tidak error)
-
--- Contoh Fly (disingkat, ganti dengan kode asli kamu kalau mau)
+-- ============================================
+-- FLY
+-- ============================================
 PlayerMenuTab:Section({ Title = "Fly" })
 
--- ... masukkan kode Fly, WalkSpeed, JumpPower, dan Teleport kamu di sini ...
+local flyEnabled = false
+local flySpeed   = 0
+local flyConn    = nil
+local bodyGyro   = nil
+local bodyVel    = nil
+local smoothVel  = Vector3.zero
+local flyToggle  = nil
+
+local function cleanFly()
+    if flyConn then flyConn:Disconnect() flyConn = nil end
+    if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
+    if bodyVel then bodyVel:Destroy() bodyVel = nil end
+    smoothVel = Vector3.zero
+    pcall(function()
+        local h = getHum()
+        h.PlatformStand = false
+        h.AutoRotate = true
+    end)
+end
+
+local function startFly()
+    cleanFly()
+    local root = getRoot()
+
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.P = 9e4
+    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.CFrame = workspace.CurrentCamera.CFrame
+    bodyGyro.Parent = root
+
+    bodyVel = Instance.new("BodyVelocity")
+    bodyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyVel.Velocity = Vector3.zero
+    bodyVel.Parent = root
+
+    local hum = getHum()
+    hum.PlatformStand = true
+    hum.AutoRotate = false
+
+    flyConn = RunService.RenderStepped:Connect(function(dt)
+        if not flyEnabled then return end
+        local cam = workspace.CurrentCamera
+        local speed = math.max(flySpeed, 16)
+
+        local md = hum.MoveDirection
+        local move = Vector3.zero
+
+        if md.Magnitude > 0 then
+            local look = cam.CFrame.LookVector
+            local right = cam.CFrame.RightVector
+            local flat = Vector3.new(md.X, 0, md.Z).Unit
+            move = (look * -flat.Z) + (right * flat.X)
+        end
+
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0,1,0) end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.C) then move += Vector3.new(0,-1,0) end
+
+        if move.Magnitude > 0 then move = move.Unit end
+
+        bodyGyro.CFrame = cam.CFrame
+        smoothVel = smoothVel:Lerp(move * speed, math.clamp(dt * 10, 0, 1))
+        bodyVel.Velocity = smoothVel
+    end)
+end
+
+local function setFly(state)
+    flyEnabled = state
+    if flyToggle then flyToggle:SetTitle("Fly (" .. (state and "Active" or "Inactive") .. ")") end
+    if state then
+        startFly()
+        WindUI:Notify({ Title = "Fly ON", Content = "Super speed flight enabled", Icon = "check" })
+    else
+        cleanFly()
+        WindUI:Notify({ Title = "Fly OFF", Content = "Flight disabled", Icon = "x" })
+    end
+end
+
+flyToggle = PlayerMenuTab:Toggle({
+    Title = "Fly (Inactive)",
+    Value = false,
+    Callback = setFly
+})
+
+PlayerMenuTab:Slider({
+    Title = "Fly Speed",
+    Step = 1,
+    Value = { Min = 0, Max = 300, Default = 0 },
+    Callback = function(v) flySpeed = v end
+})
+
+PlayerMenuTab:Paragraph({
+    Title = "Fly Controls",
+    Content = "PC   : WASD + Space (Up) + C (Down)\nMobile : Joystick"
+})
+
+-- F Keybind
+UIS.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        local newState = not flyEnabled
+        setFly(newState)
+        pcall(function() flyToggle:SetValue(newState) end)
+    end
+end)
+
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    smoothVel = Vector3.zero
+    if flyEnabled then startFly() else cleanFly() end
+end)
 
 -- ============================================
--- SETTINGS
+-- WALK SPEED
+-- ============================================
+PlayerMenuTab:Section({ Title = "Walk Speed" })
+
+local wsEnabled = false
+local wsValue = 0
+local wsToggle = nil
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if wsEnabled and not flyEnabled then
+            pcall(function()
+                getHum().WalkSpeed = math.max(wsValue, 16)
+            end)
+        end
+    end
+end)
+
+wsToggle = PlayerMenuTab:Toggle({
+    Title = "Walk Speed (Inactive)",
+    Value = false,
+    Callback = function(v)
+        wsEnabled = v
+        if wsToggle then wsToggle:SetTitle("Walk Speed (" .. (v and "Active" or "Inactive") .. ")") end
+        if not v then pcall(function() getHum().WalkSpeed = 16 end) end
+        WindUI:Notify({ Title = v and "WalkSpeed ON" or "WalkSpeed OFF", Content = v and "Super speed activated" or "Reset to default" })
+    end
+})
+
+PlayerMenuTab:Slider({
+    Title = "Walk Speed",
+    Step = 1,
+    Value = { Min = 0, Max = 300, Default = 0 },
+    Callback = function(v) wsValue = v end
+})
+
+-- ============================================
+-- JUMP POWER
+-- ============================================
+PlayerMenuTab:Section({ Title = "Jump Power" })
+
+local jpEnabled = false
+local jpValue = 0
+local jpToggle = nil
+
+task.spawn(function()
+    while true do
+        task.wait(0.05)
+        if jpEnabled then
+            pcall(function()
+                local h = getHum()
+                local actual = jpValue == 0 and 50 or jpValue
+                h.JumpPower = actual
+                h.JumpHeight = actual / 5
+                h.UseJumpPower = true
+            end)
+        end
+    end
+end)
+
+jpToggle = PlayerMenuTab:Toggle({
+    Title = "Jump Power (Inactive)",
+    Value = false,
+    Callback = function(v)
+        jpEnabled = v
+        if jpToggle then jpToggle:SetTitle("Jump Power (" .. (v and "Active" or "Inactive") .. ")") end
+        if not v then pcall(function() getHum().JumpPower = 50 end) end
+        WindUI:Notify({ Title = v and "JumpPower ON" or "JumpPower OFF", Content = v and "Super jump activated" or "Reset to default" })
+    end
+})
+
+PlayerMenuTab:Slider({
+    Title = "Jump Power",
+    Step = 1,
+    Value = { Min = 0, Max = 300, Default = 0 },
+    Callback = function(v) jpValue = v end
+})
+
+-- ============================================
+-- TELEPORT TAB
+-- ============================================
+TeleportTab:Section({ Title = "Player Teleport" })
+
+local selectedPlayer = nil
+local dropdown = nil
+
+local function getPlayerNames()
+    local names = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr \~= player then table.insert(names, plr.Name) end
+    end
+    table.sort(names, function(a,b) return a:lower() < b:lower() end)
+    return names
+end
+
+local function applyDropdownOptions()
+    if not dropdown then return end
+    local names = getPlayerNames()
+    if dropdown.SetOptions then dropdown:SetOptions(names)
+    elseif dropdown.SetValues then dropdown:SetValues(names)
+    elseif dropdown.Refresh then dropdown:Refresh(names) end
+end
+
+dropdown = TeleportTab:Dropdown({
+    Title = "Teleport To",
+    Values = getPlayerNames(),
+    Callback = function(v) selectedPlayer = v end
+})
+
+TeleportTab:Button({
+    Title = "TELEPORT",
+    Desc = "Teleport to selected player",
+    Callback = function()
+        if not selectedPlayer then
+            WindUI:Notify({ Title = "Error", Content = "Please select a player first!", Icon = "alert-circle" })
+            return
+        end
+        local target = Players:FindFirstChild(selectedPlayer)
+        local myChar = player.Character
+        if not target or not target.Character or not myChar then return end
+        
+        local tRoot = target.Character:FindFirstChild("HumanoidRootPart")
+        local mRoot = myChar:FindFirstChild("HumanoidRootPart")
+        if tRoot and mRoot then
+            mRoot.CFrame = tRoot.CFrame + Vector3.new(0, 3, 0)
+            WindUI:Notify({ Title = "Success", Content = "Teleported to " .. selectedPlayer, Icon = "check" })
+        end
+    end
+})
+
+-- Auto Refresh every 5 minutes
+task.spawn(function()
+    while true do
+        task.wait(300)
+        applyDropdownOptions()
+    end
+end)
+
+Players.PlayerAdded:Connect(function() task.wait(0.5); applyDropdownOptions() end)
+Players.PlayerRemoving:Connect(function() task.wait(0.1); applyDropdownOptions() end)
+
+task.delay(1, applyDropdownOptions)
+
+-- ============================================
+-- SETTINGS (Anti-Lag)
 -- ============================================
 PlayerMenuTab:Section({ Title = "Settings" })
 
@@ -168,4 +401,9 @@ PlayerMenuTab:Toggle({
     Title    = "Anti Lag (Performance Mode)",
     Value    = false,
     Callback = toggleAntiLag
+})
+
+PlayerMenuTab:Paragraph({
+    Title   = "Anti-Lag Info",
+    Content = "Reduces device heating and stabilizes FPS"
 })
