@@ -24,31 +24,34 @@ local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footag
 local function Notify(title, content, icon, duration)
 
     WindUI:Notify({
-        Title = title or "",
-        Content = content or "",
+        Title = title,
+        Content = content,
         Icon = icon or "check",
         Duration = duration or 2
     })
 
     task.spawn(function()
-        task.wait(0.03)
+        task.wait(0.05)
 
         for _, v in ipairs(game.CoreGui:GetDescendants()) do
 
             pcall(function()
 
-                -- SMALL SCALE
-                if v:IsA("UIScale") then
-                    if tostring(v.Parent):lower():find("notify") then
-                        v.Scale = 0.72
+                if v:IsA("Frame") then
+
+                    local name = tostring(v.Name):lower()
+
+                    if name:find("notify")
+                    or name:find("toast")
+                    or name:find("notification") then
+
+                        v.Size = UDim2.new(0, 220, 0, 55)
                     end
                 end
 
-                -- SMALL SIZE
-                if v:IsA("Frame") then
-                    if tostring(v.Name):lower():find("notify") then
-                        v.Size = UDim2.new(0, 230, 0, 60)
-                    end
+                if v:IsA("TextLabel") then
+                    v.TextScaled = false
+                    v.TextSize = 13
                 end
 
             end)
@@ -482,66 +485,6 @@ antiLagToggle = SettingTab:Toggle({
 })
 
 -- ============================================
--- LOW TEXTURE
--- ============================================
-
-local lowTextureToggle = nil
-local lowTextureEnabled = false
-
-local savedTextures = {}
-
-local function setLowTexture(state)
-    lowTextureEnabled = state
-
-    if state then
-        for _, v in ipairs(workspace:GetDescendants()) do
-            pcall(function()
-
-                -- Save transparency texture/decal
-                if v:IsA("Texture") or v:IsA("Decal") then
-                    if savedTextures[v] == nil then
-                        savedTextures[v] = v.Transparency
-                    end
-
-                    v.Transparency = 1
-                end
-
-                -- Smooth material
-                if v:IsA("BasePart") then
-                    v.Material = Enum.Material.SmoothPlastic
-                    v.Reflectance = 0
-                end
-
-            end)
-        end
-
-    else
-        -- Restore texture
-        for obj, transparency in pairs(savedTextures) do
-            pcall(function()
-                if obj and obj.Parent then
-                    obj.Transparency = transparency
-                end
-            end)
-        end
-    end
-end
-
-lowTextureToggle = SettingTab:Toggle({
-    Title = "Low Texture (Inactive)",
-    Value = false,
-    Callback = function(v)
-        setLowTexture(v)
-
-        if lowTextureToggle then
-            lowTextureToggle:SetTitle(
-                "Low Texture (" .. (v and "Active" or "Inactive") .. ")"
-            )
-        end
-    end
-})
-
--- ============================================
 -- FPS BOOSTER EXTREME
 -- ============================================
 
@@ -656,118 +599,3 @@ fpsBoostToggle = SettingTab:Toggle({
         end
     end
 })
-
--- ============================================
--- ADVANCED INVISIBLE
--- ============================================
-
-local invisibleToggle = nil
-local invisibleEnabled = false
-
-local savedData = {}
-
-local function setInvisible(state)
-    invisibleEnabled = state
-
-    local char = player.Character
-    if not char then return end
-
-    for _, v in ipairs(char:GetDescendants()) do
-        pcall(function()
-
-            -- BODY PARTS
-            if v:IsA("BasePart") then
-
-                if state then
-                    if savedData[v] == nil then
-                        savedData[v] = {
-                            Transparency = v.Transparency,
-                            CastShadow = v.CastShadow
-                        }
-                    end
-
-                    v.Transparency = 1
-                    v.CastShadow = false
-
-                else
-                    if savedData[v] then
-                        v.Transparency = savedData[v].Transparency
-                        v.CastShadow = savedData[v].CastShadow
-                    else
-                        v.Transparency = 0
-                        v.CastShadow = true
-                    end
-                end
-            end
-
-            -- DECALS / FACE
-            if v:IsA("Decal") then
-
-                if savedData[v] == nil then
-                    savedData[v] = {
-                        Transparency = v.Transparency
-                    }
-                end
-
-                if state then
-                    v.Transparency = 1
-                else
-                    v.Transparency = savedData[v].Transparency
-                end
-            end
-
-            -- ACCESSORIES
-            if v:IsA("Accessory") then
-                local handle = v:FindFirstChild("Handle")
-
-                if handle then
-
-                    if savedData[handle] == nil then
-                        savedData[handle] = {
-                            Transparency = handle.Transparency
-                        }
-                    end
-
-                    if state then
-                        handle.Transparency = 1
-                    else
-                        handle.Transparency = savedData[handle].Transparency
-                    end
-                end
-            end
-
-            -- HIDE NAME
-            if v:IsA("Humanoid") then
-                if state then
-                    v.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-                else
-                    v.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
-                end
-            end
-
-        end)
-    end
-end
-
-invisibleToggle = PlayerMenuTab:Toggle({
-    Title = "Invisible (Inactive)",
-    Value = false,
-    Callback = function(v)
-
-        setInvisible(v)
-
-        if invisibleToggle then
-            invisibleToggle:SetTitle(
-                "Invisible (" .. (v and "Active" or "Inactive") .. ")"
-            )
-        end
-    end
-})
-
-player.CharacterAdded:Connect(function()
-    task.wait(1)
-
-    if invisibleEnabled then
-        setInvisible(true)
-    end
-end)
