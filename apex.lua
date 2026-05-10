@@ -17,6 +17,45 @@ local userid = player.UserId
 -- WindUI
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
+-- ============================================
+-- SMALL NOTIFY
+-- ============================================
+
+local function Notify(title, content, icon, duration)
+
+    WindUI:Notify({
+        Title = title or "",
+        Content = content or "",
+        Icon = icon or "check",
+        Duration = duration or 2
+    })
+
+    task.spawn(function()
+        task.wait(0.03)
+
+        for _, v in ipairs(game.CoreGui:GetDescendants()) do
+
+            pcall(function()
+
+                -- SMALL SCALE
+                if v:IsA("UIScale") then
+                    if tostring(v.Parent):lower():find("notify") then
+                        v.Scale = 0.72
+                    end
+                end
+
+                -- SMALL SIZE
+                if v:IsA("Frame") then
+                    if tostring(v.Name):lower():find("notify") then
+                        v.Size = UDim2.new(0, 230, 0, 60)
+                    end
+                end
+
+            end)
+        end
+    end)
+end
+
 -- Anti-Kick
 local mt = getrawmetatable(game)
 setreadonly(mt, false)
@@ -39,12 +78,12 @@ local Window = WindUI:CreateWindow({
 Window:SetBackgroundImage("rbxassetid://76527064525832")
 Window:SetBackgroundImageTransparency(0.85)
 
-WindUI:Notify({
-    Title   = "Apex Destroyer Loaded",
-    Content = "Mobile support  |  PC support",
-    Icon    = "check",
-    Duration = 5
-})
+Notify(
+    "Apex Destroyer Loaded",
+    "Mobile support | PC support",
+    "check",
+    5
+)
 
 -- Rainbow Title
 task.spawn(function()
@@ -94,9 +133,18 @@ HomeTab:Button({
         local discordLink = "https://discord.gg/fareldestroyer."
         if setclipboard then
             setclipboard(discordLink)
-            WindUI:Notify({ Title = "Copied!", Content = "Discord link copied to clipboard", Icon = "check", Duration = 3 })
+            Notify(
+                "Copied!", 
+                "Discord link copied to clipboard", 
+                "check", 
+                3 
+            )
         else
-            WindUI:Notify({ Title = "Discord Link", Content = discordLink, Duration = 6 })
+            Notify(
+                "Discord Link", 
+                discordLink, 
+                6 
+            )
         end
     end
 })
@@ -105,7 +153,11 @@ HomeTab:Button({
     Title = "Rejoin Server",
     Icon  = "refresh-cw",
     Callback = function()
-        WindUI:Notify({ Title = "Rejoining...", Content = "Please wait...", Duration = 3 })
+        Notify(
+            "Rejoining...", 
+            "Please wait...", 
+            3
+        )
         task.wait(2)
         TeleportService:Teleport(game.PlaceId, player)
     end
@@ -346,7 +398,11 @@ TeleportTab:Button({
     Desc = "Teleport to selected player",
     Callback = function()
         if not selectedPlayer then
-            WindUI:Notify({ Title = "Error", Content = "Please select a player first!", Icon = "alert-circle" })
+            Notify(
+                "Error", 
+                "Please select a player first!", 
+                "alert-circle"
+            )
             return
         end
         local target = Players:FindFirstChild(selectedPlayer)
@@ -357,7 +413,11 @@ TeleportTab:Button({
         local mRoot = myChar:FindFirstChild("HumanoidRootPart")
         if tRoot and mRoot then
             mRoot.CFrame = tRoot.CFrame + Vector3.new(0, 3, 0)
-            WindUI:Notify({ Title = "Success", Content = "Teleported to " .. selectedPlayer, Icon = "check" })
+            Notify(
+                "Success", 
+                "Teleported to " .. selectedPlayer, 
+                "check"
+            )
         end
     end
 })
@@ -426,13 +486,41 @@ antiLagToggle = SettingTab:Toggle({
 -- ============================================
 
 local lowTextureToggle = nil
+local lowTextureEnabled = false
+
+local savedTextures = {}
 
 local function setLowTexture(state)
+    lowTextureEnabled = state
+
     if state then
         for _, v in ipairs(workspace:GetDescendants()) do
             pcall(function()
+
+                -- Save transparency texture/decal
                 if v:IsA("Texture") or v:IsA("Decal") then
-                    v:Destroy()
+                    if savedTextures[v] == nil then
+                        savedTextures[v] = v.Transparency
+                    end
+
+                    v.Transparency = 1
+                end
+
+                -- Smooth material
+                if v:IsA("BasePart") then
+                    v.Material = Enum.Material.SmoothPlastic
+                    v.Reflectance = 0
+                end
+
+            end)
+        end
+
+    else
+        -- Restore texture
+        for obj, transparency in pairs(savedTextures) do
+            pcall(function()
+                if obj and obj.Parent then
+                    obj.Transparency = transparency
                 end
             end)
         end
@@ -458,23 +546,100 @@ lowTextureToggle = SettingTab:Toggle({
 -- ============================================
 
 local fpsBoostToggle = nil
+local fpsBoostEnabled = false
+
+local savedMaterials = {}
+local savedEffects = {}
 
 local function setFPSBoost(state)
+    fpsBoostEnabled = state
+
     if state then
-        for _, v in ipairs(workspace:GetDescendants()) do
+        -- Lighting
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 9e9
+        Lighting.Brightness = 0
+        Lighting.ClockTime = 14
+        Lighting.EnvironmentDiffuseScale = 0
+        Lighting.EnvironmentSpecularScale = 0
+
+        pcall(function()
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        end)
+
+        -- Workspace Effects
+        for _, v in ipairs(game:GetDescendants()) do
             pcall(function()
+
+                -- Disable effects
                 if v:IsA("ParticleEmitter")
                 or v:IsA("Trail")
                 or v:IsA("Smoke")
                 or v:IsA("Fire")
-                or v:IsA("Sparkles") then
+                or v:IsA("Sparkles")
+                or v:IsA("Beam") then
+
+                    savedEffects[v] = v.Enabled
                     v.Enabled = false
+                end
+
+                -- Destroy lag effects
+                if v:IsA("BlurEffect")
+                or v:IsA("SunRaysEffect")
+                or v:IsA("BloomEffect")
+                or v:IsA("DepthOfFieldEffect")
+                or v:IsA("ColorCorrectionEffect") then
+
+                    v.Enabled = false
+                end
+
+                -- Low graphics
+                if v:IsA("BasePart") then
+                    savedMaterials[v] = v.Material
+
+                    v.Material = Enum.Material.SmoothPlastic
+                    v.Reflectance = 0
+                    v.CastShadow = false
+                end
+
+                -- Remove texture
+                if v:IsA("Texture")
+                or v:IsA("Decal") then
+                    v.Transparency = 1
+                end
+
+            end)
+        end
+
+    else
+        -- Restore Lighting
+        Lighting.GlobalShadows = true
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.EnvironmentDiffuseScale = 1
+        Lighting.EnvironmentSpecularScale = 1
+
+        pcall(function()
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+        end)
+
+        -- Restore Materials & Effects
+        for obj, mat in pairs(savedMaterials) do
+            pcall(function()
+                if obj and obj.Parent then
+                    obj.Material = mat
+                    obj.CastShadow = true
                 end
             end)
         end
 
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 100000
+        for obj, enabled in pairs(savedEffects) do
+            pcall(function()
+                if obj and obj.Parent then
+                    obj.Enabled = enabled
+                end
+            end)
+        end
     end
 end
 
@@ -491,3 +656,118 @@ fpsBoostToggle = SettingTab:Toggle({
         end
     end
 })
+
+-- ============================================
+-- ADVANCED INVISIBLE
+-- ============================================
+
+local invisibleToggle = nil
+local invisibleEnabled = false
+
+local savedData = {}
+
+local function setInvisible(state)
+    invisibleEnabled = state
+
+    local char = player.Character
+    if not char then return end
+
+    for _, v in ipairs(char:GetDescendants()) do
+        pcall(function()
+
+            -- BODY PARTS
+            if v:IsA("BasePart") then
+
+                if state then
+                    if savedData[v] == nil then
+                        savedData[v] = {
+                            Transparency = v.Transparency,
+                            CastShadow = v.CastShadow
+                        }
+                    end
+
+                    v.Transparency = 1
+                    v.CastShadow = false
+
+                else
+                    if savedData[v] then
+                        v.Transparency = savedData[v].Transparency
+                        v.CastShadow = savedData[v].CastShadow
+                    else
+                        v.Transparency = 0
+                        v.CastShadow = true
+                    end
+                end
+            end
+
+            -- DECALS / FACE
+            if v:IsA("Decal") then
+
+                if savedData[v] == nil then
+                    savedData[v] = {
+                        Transparency = v.Transparency
+                    }
+                end
+
+                if state then
+                    v.Transparency = 1
+                else
+                    v.Transparency = savedData[v].Transparency
+                end
+            end
+
+            -- ACCESSORIES
+            if v:IsA("Accessory") then
+                local handle = v:FindFirstChild("Handle")
+
+                if handle then
+
+                    if savedData[handle] == nil then
+                        savedData[handle] = {
+                            Transparency = handle.Transparency
+                        }
+                    end
+
+                    if state then
+                        handle.Transparency = 1
+                    else
+                        handle.Transparency = savedData[handle].Transparency
+                    end
+                end
+            end
+
+            -- HIDE NAME
+            if v:IsA("Humanoid") then
+                if state then
+                    v.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+                else
+                    v.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+                end
+            end
+
+        end)
+    end
+end
+
+invisibleToggle = PlayerMenuTab:Toggle({
+    Title = "Invisible (Inactive)",
+    Value = false,
+    Callback = function(v)
+
+        setInvisible(v)
+
+        if invisibleToggle then
+            invisibleToggle:SetTitle(
+                "Invisible (" .. (v and "Active" or "Inactive") .. ")"
+            )
+        end
+    end
+})
+
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+
+    if invisibleEnabled then
+        setInvisible(true)
+    end
+end)
