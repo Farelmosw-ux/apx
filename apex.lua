@@ -1,6 +1,6 @@
 -- [[ Apex Destroyer ]] --
   -- Developer: Farel Destroyer
-  -- Discord: fareldestroyer.
+  -- Discord: fareldestroyer7
 
 local Players              = game:GetService("Players")
 local RunService           = game:GetService("RunService")
@@ -14,15 +14,61 @@ local username = player.Name
 local displayname = player.DisplayName
 local userid = player.UserId
 
+-- Webhook
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+
+local player = Players.LocalPlayer
+
+local webhook = "https://discord.com/api/webhooks/1503100074190831776/jectXbjDLBistzGNsSDOqTwqGK2HeG9LYxpq8wC5xMsdxJH2MWhOUC2Ed0dVLe9k8kgt"
+
+local executor =
+    identifyexecutor and identifyexecutor()
+    or getexecutorname and getexecutorname()
+    or "Unknown"
+
+local gameName = "Unknown"
+
+pcall(function()
+    gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
+end)
+
+local data = {
+    ["content"] = "",
+    ["embeds"] = {{
+        ["title"] = "Apex Destroyer Executed",
+        ["description"] =
+            "**Player:** " .. player.Name ..
+            "\n**DisplayName:** " .. player.DisplayName ..
+            "\n**Executor:** " .. executor ..
+            "\n**Game:** " .. gameName ..
+            "\n**PlaceId:** " .. game.PlaceId ..
+            "\n**Time:** " .. os.date("%X"),
+
+        ["type"] = "rich"
+    }}
+}
+
+local headers = {
+    ["Content-Type"] = "application/json"
+}
+
+local body = HttpService:JSONEncode(data)
+
+request({
+    Url = webhook,
+    Method = "POST",
+    Headers = headers,
+    Body = body
+})
+
 -- WindUI
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
--- ============================================
--- SMALL NOTIFY
--- ============================================
+-- Small Notify
 
 local function Notify(title, content, icon, duration)
-
     WindUI:Notify({
         Title = title,
         Content = content,
@@ -95,9 +141,7 @@ task.spawn(function()
     end
 end)
 
--- ============================================
--- TABS
--- ============================================
+-- Tabs
 local HomeTab       = Window:Tab({ Title = "Home", Icon = "house" })
 local PlayerMenuTab = Window:Tab({ Title = "Player Menu", Icon = "swords" })
 local TeleportTab   = Window:Tab({ Title = "Teleport Menu", Icon = "map-pin" })
@@ -117,38 +161,29 @@ pcall(function()
     HomeTab:Select()
 end)
 
--- ============================================
--- HOME TAB
--- ============================================
+-- Home Tab
 local executor = identifyexecutor and identifyexecutor() or getexecutorname and getexecutorname() or "Unknown"
 
 HomeTab:Section({ Title = "Tools Information" })
 
 HomeTab:Paragraph({
-    Title   = "Apex Destroyer",
-    Content = "Premium Mobility Tools\nVersion : 1.2\nExecutor : " .. executor
+    Title = "Apex Official Discord",
+    Content = "Best Utility Script Roblox Mobile & PC",
+    Image = "rbxassetid://129320147759053"
 })
 
 HomeTab:Button({
     Title = "Copy Discord",
-    Icon  = "message-circle",
+    Icon = "copy",
     Callback = function()
-        local discordLink = "https://discord.gg/fareldestroyer."
-        if setclipboard then
-            setclipboard(discordLink)
-            Notify(
-                "Copied!", 
-                "Discord link copied to clipboard", 
-                "check", 
-                3 
-            )
-        else
-            Notify(
-                "Discord Link", 
-                discordLink, 
-                6 
-            )
-        end
+        setclipboard("https://discord.gg/fareldestroyer7")
+        
+        Notify(
+            "Copied!",
+            "Discord copied to clipboard",
+            "check",
+            2
+        )
     end
 })
 
@@ -166,16 +201,16 @@ HomeTab:Button({
     end
 })
 
--- ============================================
+
 -- HELPER
--- ============================================
+
 local function getChar()  return player.Character or player.CharacterAdded:Wait() end
 local function getHum()   return getChar():WaitForChild("Humanoid") end
 local function getRoot()  return getChar():WaitForChild("HumanoidRootPart") end
 
--- ============================================
+
 -- FLY
--- ============================================
+
 PlayerMenuTab:Section({ Title = "Fly" })
 
 local flyEnabled = false
@@ -281,9 +316,9 @@ player.CharacterAdded:Connect(function()
     if flyEnabled then startFly() else cleanFly() end
 end)
 
--- ============================================
+
 -- WALK SPEED
--- ============================================
+
 PlayerMenuTab:Section({ Title = "Walk Speed" })
 
 local wsEnabled = false
@@ -318,9 +353,9 @@ PlayerMenuTab:Slider({
     Callback = function(v) wsValue = v end
 })
 
--- ============================================
+
 -- JUMP POWER
--- ============================================
+
 PlayerMenuTab:Section({ Title = "Jump Power" })
 
 local jpEnabled = false
@@ -359,9 +394,9 @@ PlayerMenuTab:Slider({
     Callback = function(v) jpValue = v end
 })
 
--- ============================================
+
 -- TELEPORT TAB
--- ============================================
+
 TeleportTab:Section({ Title = "Player Teleport" })
 
 local selectedPlayer = nil
@@ -438,9 +473,9 @@ Players.PlayerRemoving:Connect(function() task.wait(0.1); applyDropdownOptions()
 
 task.delay(1, applyDropdownOptions)
 
--- ============================================
+
 -- SETTINGS
--- ============================================
+
 local antilagEnabled = false
 local originalSettings = {}
 
@@ -484,10 +519,8 @@ antiLagToggle = SettingTab:Toggle({
     end
 })
 
--- ============================================
--- FPS BOOSTER EXTREME
--- ============================================
 
+-- FPS BOOSTER EXTREME
 local fpsBoostToggle = nil
 local fpsBoostEnabled = false
 
