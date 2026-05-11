@@ -196,14 +196,15 @@ local function getRoot()  return getChar():WaitForChild("HumanoidRootPart") end
 
 -- FLY
 PlayerMenuTab:Section({ Title = "Fly" })
+
 local flyEnabled = false
 local flySpeed = 50
 local flyConn
-local bodyApex
 local bodyVelocity
+local bodyGyro
 local flyToggle
 
-local function stopFly()
+local function cleanFly()
     flyEnabled = false
 
     if flyConn then
@@ -212,24 +213,25 @@ local function stopFly()
     end
 
     pcall(function()
-        if bodyApex then
-            bodyApex:Destroy()
-            bodyApex = nil
-        end
-
         if bodyVelocity then
             bodyVelocity:Destroy()
             bodyVelocity = nil
         end
 
+        if bodyGyro then
+            bodyGyro:Destroy()
+            bodyGyro = nil
+        end
+
         local hum = getHum()
+
         hum.PlatformStand = false
         hum.AutoRotate = true
     end)
 end
 
 local function startFly()
-    stopFly()
+    cleanFly()
 
     flyEnabled = true
 
@@ -238,57 +240,53 @@ local function startFly()
     local root = getRoot()
     local cam = workspace.CurrentCamera
 
-    hum.PlatformStand = true
-    hum.AutoRotate = false
-
-    bodyApex = Instance.new("BodyApex")
-    bodyApex.Name = "ApexFly"
-    bodyApex.P = 9e4
-    bodyApex.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bodyApex.CFrame = cam.CFrame
-    bodyApex.Parent = root
+    hum.PlatformStand = false
+    hum.AutoRotate = true
 
     bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.Name = "FlyVelocity"
     bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
     bodyVelocity.Velocity = Vector3.zero
     bodyVelocity.Parent = root
 
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.P = 9e4
+    bodyGyro.CFrame = cam.CFrame
+    bodyGyro.Parent = root
+
     flyConn = RunService.RenderStepped:Connect(function()
         if not flyEnabled then return end
 
-        local camCF = cam.CFrame
         local moveDir = hum.MoveDirection
+        local camCF = cam.CFrame
 
-        local moveVector = Vector3.zero
+        local velocity = Vector3.zero
 
         if moveDir.Magnitude > 0 then
-            moveVector = camCF:VectorToWorldSpace(moveDir)
+            velocity =
+                (camCF.LookVector * moveDir.Z) +
+                (camCF.RightVector * moveDir.X)
         end
 
-        local y = 0
+        local upDown = 0
 
         if UIS:IsKeyDown(Enum.KeyCode.Space) then
-            y = y + 1
+            upDown += 1
         end
 
         if UIS:IsKeyDown(Enum.KeyCode.LeftControl)
         or UIS:IsKeyDown(Enum.KeyCode.C) then
-            y = y - 1
+            upDown -= 1
         end
 
-        moveVector = Vector3.new(
-            moveVector.X,
-            y,
-            moveVector.Z
-        )
+        velocity += Vector3.new(0, upDown, 0)
 
-        if moveVector.Magnitude > 0 then
-            moveVector = moveVector.Unit
+        if velocity.Magnitude > 0 then
+            velocity = velocity.Unit * math.max(flySpeed, 16)
         end
 
-        bodyVelocity.Velocity = moveVector * flySpeed
-        bodyApex.CFrame = camCF
+        bodyVelocity.Velocity = velocity
+        bodyGyro.CFrame = camCF
     end)
 end
 
@@ -302,7 +300,7 @@ local function setFly(state)
     if state then
         startFly()
     else
-        stopFly()
+        cleanFly()
     end
 end
 
