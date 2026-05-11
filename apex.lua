@@ -169,7 +169,7 @@ HomeTab:Section({ Title = "Tools Information" })
 HomeTab:Paragraph({
     Title = "Apex Official Discord",
     Content = "Best Utility Script Roblox Mobile & PC",
-    Image = "rbxassetid://129320147759053"
+    Image = "rbxassetid://76072464125747"
 })
 
 HomeTab:Button({
