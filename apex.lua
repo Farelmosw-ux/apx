@@ -164,20 +164,20 @@ end)
 -- Home Tab
 local executor = identifyexecutor and identifyexecutor() or getexecutorname and getexecutorname() or "Unknown"
 
-HomeTab:Section({ Title = "Tools Information" })
+HomeTab:Section({ Title = "Apex Destroyer Information" })
 
 HomeTab:Paragraph({
     Title = "Apex Official Discord",
-    Content = "Best Utility Script Roblox Mobile & PC",
-    Image = "rbxassetid://76072464125747"
+    Content = "Best utility for Mobile & PC",
+    Image = "rbxassetid://129320147759053"
 })
 
 HomeTab:Button({
     Title = "Copy Discord",
     Icon = "copy",
     Callback = function()
-        setclipboard("https://discord.gg/fareldestroyer7")
-        
+        setclipboard("https://discord.gg/fareldestroyer")
+
         Notify(
             "Copied!",
             "Discord copied to clipboard",
@@ -187,21 +187,6 @@ HomeTab:Button({
     end
 })
 
-HomeTab:Button({
-    Title = "Rejoin Server",
-    Icon  = "refresh-cw",
-    Callback = function()
-        Notify(
-            "Rejoining...", 
-            "Please wait...", 
-            3
-        )
-        task.wait(2)
-        TeleportService:Teleport(game.PlaceId, player)
-    end
-})
-
-
 -- HELPER
 
 local function getChar()  return player.Character or player.CharacterAdded:Wait() end
@@ -210,81 +195,114 @@ local function getRoot()  return getChar():WaitForChild("HumanoidRootPart") end
 
 
 -- FLY
-
 PlayerMenuTab:Section({ Title = "Fly" })
-
 local flyEnabled = false
-local flySpeed   = 0
-local flyConn    = nil
-local bodyGyro   = nil
-local bodyVel    = nil
-local smoothVel  = Vector3.zero
-local flyToggle  = nil
+local flySpeed = 50
+local flyConn
+local bodyApex
+local bodyVelocity
+local flyToggle
 
-local function cleanFly()
-    if flyConn then flyConn:Disconnect() flyConn = nil end
-    if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
-    if bodyVel then bodyVel:Destroy() bodyVel = nil end
-    smoothVel = Vector3.zero
+local function stopFly()
+    flyEnabled = false
+
+    if flyConn then
+        flyConn:Disconnect()
+        flyConn = nil
+    end
+
     pcall(function()
-        local h = getHum()
-        h.PlatformStand = false
-        h.AutoRotate = true
+        if bodyApex then
+            bodyApex:Destroy()
+            bodyApex = nil
+        end
+
+        if bodyVelocity then
+            bodyVelocity:Destroy()
+            bodyVelocity = nil
+        end
+
+        local hum = getHum()
+        hum.PlatformStand = false
+        hum.AutoRotate = true
     end)
 end
 
 local function startFly()
-    cleanFly()
-    local root = getRoot()
+    stopFly()
 
-    bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.P = 9e4
-    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bodyGyro.CFrame = workspace.CurrentCamera.CFrame
-    bodyGyro.Parent = root
+    flyEnabled = true
 
-    bodyVel = Instance.new("BodyVelocity")
-    bodyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    bodyVel.Velocity = Vector3.zero
-    bodyVel.Parent = root
-
+    local char = getChar()
     local hum = getHum()
+    local root = getRoot()
+    local cam = workspace.CurrentCamera
+
     hum.PlatformStand = true
     hum.AutoRotate = false
 
-    flyConn = RunService.RenderStepped:Connect(function(dt)
+    bodyApex = Instance.new("BodyApex")
+    bodyApex.Name = "ApexFly"
+    bodyApex.P = 9e4
+    bodyApex.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyApex.CFrame = cam.CFrame
+    bodyApex.Parent = root
+
+    bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Name = "FlyVelocity"
+    bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyVelocity.Velocity = Vector3.zero
+    bodyVelocity.Parent = root
+
+    flyConn = RunService.RenderStepped:Connect(function()
         if not flyEnabled then return end
-        local cam = workspace.CurrentCamera
-        local speed = math.max(flySpeed, 16)
 
-        local md = hum.MoveDirection
-        local move = Vector3.zero
+        local camCF = cam.CFrame
+        local moveDir = hum.MoveDirection
 
-        if md.Magnitude > 0 then
-            local look = cam.CFrame.LookVector
-            local right = cam.CFrame.RightVector
-            local flat = Vector3.new(md.X, 0, md.Z).Unit
-            move = (look * -flat.Z) + (right * flat.X)
+        local moveVector = Vector3.zero
+
+        if moveDir.Magnitude > 0 then
+            moveVector = camCF:VectorToWorldSpace(moveDir)
         end
 
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0,1,0) end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) or UIS:IsKeyDown(Enum.KeyCode.C) then move += Vector3.new(0,-1,0) end
+        local y = 0
 
-        if move.Magnitude > 0 then move = move.Unit end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then
+            y = y + 1
+        end
 
-        bodyGyro.CFrame = cam.CFrame
-        smoothVel = smoothVel:Lerp(move * speed, math.clamp(dt * 10, 0, 1))
-        bodyVel.Velocity = smoothVel
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl)
+        or UIS:IsKeyDown(Enum.KeyCode.C) then
+            y = y - 1
+        end
+
+        moveVector = Vector3.new(
+            moveVector.X,
+            y,
+            moveVector.Z
+        )
+
+        if moveVector.Magnitude > 0 then
+            moveVector = moveVector.Unit
+        end
+
+        bodyVelocity.Velocity = moveVector * flySpeed
+        bodyApex.CFrame = camCF
     end)
 end
 
 local function setFly(state)
-    flyEnabled = state
-    if flyToggle then flyToggle:SetTitle("Fly (" .. (state and "Active" or "Inactive") .. ")") end
+    if flyToggle then
+        flyToggle:SetTitle(
+            "Fly (" .. (state and "Active" or "Inactive") .. ")"
+        )
+    end
+
     if state then
         startFly()
     else
-        cleanFly()
+        stopFly()
     end
 end
 
@@ -297,23 +315,36 @@ flyToggle = PlayerMenuTab:Toggle({
 PlayerMenuTab:Slider({
     Title = "Fly Speed",
     Step = 1,
-    Value = { Min = 0, Max = 300, Default = 0 },
-    Callback = function(v) flySpeed = v end
+    Value = {
+        Min = 0,
+        Max = 300,
+        Default = 50
+    },
+    Callback = function(v)
+        flySpeed = v
+    end
 })
 
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
+
     if input.KeyCode == Enum.KeyCode.F then
         local newState = not flyEnabled
+
         setFly(newState)
-        pcall(function() flyToggle:SetValue(newState) end)
+
+        pcall(function()
+            flyToggle:SetValue(newState)
+        end)
     end
 end)
 
 player.CharacterAdded:Connect(function()
     task.wait(1)
-    smoothVel = Vector3.zero
-    if flyEnabled then startFly() else cleanFly() end
+
+    if flyEnabled then
+        startFly()
+    end
 end)
 
 
@@ -630,5 +661,20 @@ fpsBoostToggle = SettingTab:Toggle({
                 "FPS Booster Extreme (" .. (v and "Active" or "Inactive") .. ")"
             )
         end
+    end
+})
+
+-- Rejoin
+SettingTab:Button({
+    Title = "Rejoin Server",
+    Icon  = "refresh-cw",
+    Callback = function()
+        Notify(
+            "Rejoining...", 
+            "Please wait...", 
+            3
+        )
+        task.wait(2)
+        TeleportService:Teleport(game.PlaceId, player)
     end
 })
