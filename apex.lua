@@ -16,8 +16,6 @@ local userid = player.UserId
 
 -- Webhook
 local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
-local MarketplaceService = game:GetService("MarketplaceService")
 
 local webhook = "https://discord.com/api/webhooks/1503100074190831776/jectXbjDLBistzGNsSDOqTwqGK2HeG9LYxpq8wC5xMsdxJH2MWhOUC2Ed0dVLe9k8kgt"
 
@@ -121,8 +119,6 @@ pcall(function()
 end)
 
 -- Home Tab
-local executor = identifyexecutor and identifyexecutor() or getexecutorname and getexecutorname() or "Unknown"
-
 HomeTab:Section({ Title = "Apex Destroyer Information" })
 
 HomeTab:Paragraph({
@@ -161,10 +157,7 @@ local flying = false
 local flySpeed = 50
 local bodyVelocity, bodyGyro, flyConnection, stateChangedConnection, animationConnection, noclipConnection
 local lastLookDirection = Vector3.new(0, 0, -1)
-local rotationSpeed = 0.03 -- Sesuai LINHMC
-local originalCollisionStates = {}
-
--- [[ CORE FUNCTIONS FROM LINHMC_NEW ]] --
+local rotationSpeed = 0.03
 
 local function isMovementAnimation(animationId)
     if not animationId then return false end
@@ -187,7 +180,7 @@ local function handleAnimations()
         if flyEnabled and flying then
             if track.Animation and track.Animation.AnimationId then
                 if isMovementAnimation(track.Animation.AnimationId) then
-                    track:Stop() -- STIFF/KAKU LOGIC
+                    track:Stop()
                 end
             end
         end
@@ -221,8 +214,6 @@ local function enableNoclip()
     end)
 end
 
--- [[ MAIN FLY LOGIC ]] --
-
 local function startFly()
     local char = player.Character
     local root = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso"))
@@ -245,7 +236,6 @@ local function startFly()
     bodyGyro.CFrame = root.CFrame
     bodyGyro.Parent = root
 
-    -- Stop existing animations
     for _, track in pairs(hum:GetPlayingAnimationTracks()) do
         track:Stop()
     end
@@ -267,15 +257,12 @@ local function startFly()
         local targetVelocity = Vector3.zero
         
         if moveVec.Magnitude > 0 then
-            -- PC & MOBILE DIRECTIONAL FIX
             local direction = camera.CFrame:VectorToWorldSpace(moveVec)
             targetVelocity = direction * flySpeed
         end
         
-        -- Smoothing movement
         bodyVelocity.Velocity = bodyVelocity.Velocity:Lerp(targetVelocity, 0.25)
         
-        -- Camera follow logic
         local currentLook = camera.CFrame.LookVector
         lastLookDirection = lastLookDirection:Lerp(currentLook, rotationSpeed)
         bodyGyro.CFrame = CFrame.lookAt(root.Position, root.Position + lastLookDirection)
@@ -410,12 +397,10 @@ local function startNoclipWall()
             local root = char:FindFirstChild("HumanoidRootPart")
             if not root then return end
             
-            -- Deteksi objek di bawah kaki menggunakan Raycast sederhana
             local raycastParams = RaycastParams.new()
             raycastParams.FilterDescendantsInstances = {char}
             raycastParams.FilterType = Enum.RaycastFilterType.Exclude
             
-            -- Tembakkan ray ke bawah sejauh 4.5 unit dari RootPart
             local raycastResult = workspace:Raycast(root.Position, Vector3.new(0, -4.5, 0), raycastParams)
             local groundPart = raycastResult and raycastResult.Instance
 
@@ -425,14 +410,11 @@ local function startNoclipWall()
                 end
             end
 
-            -- Matikan kolisi semua part map KECUALI tanah/lantai yang sedang dipijak
             for _, v in pairs(workspace:GetDescendants()) do
                 if v:IsA("BasePart") and v.CanCollide and not v:IsDescendantOf(char) then
                     if groundPart and (v == groundPart or v:IsAncestorOf(groundPart)) then
-                        -- Biarkan lantai bawah tetap padat biar tidak jatuh ke void
                         v.CanCollide = true
                     else
-                        -- Tembus objek/dinding selain lantai pijakan
                         v.CanCollide = false
                     end
                 end
@@ -444,7 +426,6 @@ end
 local function stopNoclipWall()
     noclipWallEnabled = false
     if noclipConnectionWall then noclipConnectionWall:Disconnect() end
-    -- Kembalikan kolisi karakter ke normal
     if player.Character then
         for _, v in pairs(player.Character:GetDescendants()) do
             if v:IsA("BasePart") then
@@ -483,18 +464,13 @@ local function startInvisible()
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not root or not hum then return end
     
-    -- Simpan posisi awal karakter saat pertama kali menyala
     storedCFrame = root.CFrame
     
-    -- Trik Invisible dengan menurunkan LowerTorso / UpperTorso (R15) atau Torso (R6) secara lokal ke bawah map
-    -- agar di server, player lain mengira lu berada jauh di bawah, padahal di screen lu masih di atas.
     invisConnection = RunService.Heartbeat:Connect(function()
         if not invisEnabled or not player.Character then return end
         
         local character = player.Character
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
         
-        -- Sembunyikan bagian tubuh, baju, aksesoris, dan billboard name tag secara berulang
         for _, v in pairs(character:GetDescendants()) do
             if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
                 v.Transparency = 1
@@ -506,16 +482,14 @@ local function startInvisible()
             end
         end
         
-        -- Memutuskan sambungan animasi agar karakter tidak memicu partikel/gerakan server
         local animate = character:FindFirstChild("Animate")
         if animate then animate.Enabled = false end
         
-        -- Trik offset motor6D / joint ke bawah (supaya server-side ikut mendeteksi posisi lu di bawah/tidak terlihat)
         local lowerTorso = character:FindFirstChild("LowerTorso") or character:FindFirstChild("Torso")
         if lowerTorso then
             for _, joint in pairs(character:GetDescendants()) do
                 if joint:IsA("Motor6D") and (joint.Name == "RootJoint" or joint.Name == "Root") then
-                    joint.Transform = CFrame.new(0, -500, 0) -- Melempar visual tubuh ke bawah map agar tak terlihat server
+                    joint.Transform = CFrame.new(0, -500, 0)
                 end
             end
         end
@@ -526,12 +500,9 @@ local function stopInvisible()
     invisEnabled = false
     if invisConnection then invisConnection:Disconnect() end
     
-    -- Reset karakter dengan mematikan fungsi atau merefresh agar tubuh kembali normal
     local char = player.Character
     if char then
         local hum = char:FindFirstChildOfClass("Humanoid")
-        -- Cara paling aman mengembalikan karakter dari invisible total ke normal tanpa bug adalah me-reset / memicu respawn lokal jika hancur
-        -- atau merestore transparansi jika masih utuh:
         for _, v in pairs(char:GetDescendants()) do
             if v:IsA("BasePart") then
                 if v.Name ~= "HumanoidRootPart" then
@@ -546,21 +517,19 @@ local function stopInvisible()
         local animate = char:FindFirstChild("Animate")
         if animate then animate.Enabled = true end
         
-        -- Kembalikan posisi Joint Tubuh ke semula
         for _, joint in pairs(char:GetDescendants()) do
             if joint:IsA("Motor6D") and (joint.Name == "RootJoint" or joint.Name == "Root") then
                 joint.Transform = CFrame.new()
             end
         end
         
-        -- Force update dengan melompat atau mereset state agar sinkron kembali ke server
         if hum then hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
     end
 end
 
 invisToggle = MainTab:Toggle({
     Title = "Invisible Character (Inactive)",
-    Icon = "eye-off", -- Ikon mata disilang melambangkan tidak terlihat
+    Icon = "eye-off",
     Value = false,
     Callback = function(v)
         invisEnabled = v
@@ -704,7 +673,6 @@ local function setFPSBoost(state)
     fpsBoostEnabled = state
 
     if state then
-        -- Lighting
         Lighting.GlobalShadows = false
         Lighting.FogEnd = 9e9
         Lighting.Brightness = 0
@@ -716,52 +684,40 @@ local function setFPSBoost(state)
             settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
         end)
 
-        -- Workspace Effects
         for _, v in ipairs(game:GetDescendants()) do
             pcall(function()
-
-                -- Disable effects
                 if v:IsA("ParticleEmitter")
                 or v:IsA("Trail")
                 or v:IsA("Smoke")
                 or v:IsA("Fire")
                 or v:IsA("Sparkles")
                 or v:IsA("Beam") then
-
                     savedEffects[v] = v.Enabled
                     v.Enabled = false
                 end
 
-                -- Destroy lag effects
                 if v:IsA("BlurEffect")
                 or v:IsA("SunRaysEffect")
                 or v:IsA("BloomEffect")
                 or v:IsA("DepthOfFieldEffect")
                 or v:IsA("ColorCorrectionEffect") then
-
                     v.Enabled = false
                 end
 
-                -- Low graphics
                 if v:IsA("BasePart") then
                     savedMaterials[v] = v.Material
-
                     v.Material = Enum.Material.SmoothPlastic
                     v.Reflectance = 0
                     v.CastShadow = false
                 end
 
-                -- Remove texture
                 if v:IsA("Texture")
                 or v:IsA("Decal") then
                     v.Transparency = 1
                 end
-
             end)
         end
-
     else
-        -- Restore Lighting
         Lighting.GlobalShadows = true
         Lighting.Brightness = 2
         Lighting.ClockTime = 14
@@ -772,7 +728,6 @@ local function setFPSBoost(state)
             settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
         end)
 
-        -- Restore Materials & Effects
         for obj, mat in pairs(savedMaterials) do
             pcall(function()
                 if obj and obj.Parent then
@@ -827,23 +782,20 @@ SettTab:Button({
 SettTab:Section({ Title = "Custom Identity System" })
 
 local identityEnabled = false
-local selectedRole = "Admin" -- Default role
+local selectedRole = "Admin"
 local identityToggle = nil
 
--- Konfigurasi Warna Kece untuk Role & Tag
 local roleConfigs = {
-    ["Owner"]  = { Color = Color3.fromRGB(255, 0, 100),   Text = "[Owner]" },  -- Pink Neon Kece
-    ["Admin"]  = { Color = Color3.fromRGB(0, 220, 255),   Text = "[Admin]" },  -- Cyan Elegan
-    ["Hacker"] = { Color = Color3.fromRGB(0, 255, 130),   Text = "[Hacker]" }  -- Hijau Matrix
+    ["Owner"]  = { Color = Color3.fromRGB(255, 0, 100),   Text = "[Owner]" },
+    ["Admin"]  = { Color = Color3.fromRGB(0, 220, 255),   Text = "[Admin]" },
+    ["Hacker"] = { Color = Color3.fromRGB(0, 255, 130),   Text = "[Hacker]" }
 }
 
--- 1. FUNGSI TITLE DI ATAS KEPALA (BILLBOARD GUI)
 local function createOverheadTitle()
     local char = player.Character
     local head = char and char:WaitForChild("Head", 5)
     if not head or not identityEnabled then return end
     
-    -- Hapus title lama jika ada
     if head:FindFirstChild("ApexTitle") then head.ApexTitle:Destroy() end
     
     local config = roleConfigs[selectedRole]
@@ -852,7 +804,7 @@ local function createOverheadTitle()
     bbg.Name = "ApexTitle"
     bbg.Adornee = head
     bbg.Size = UDim2.new(0, 200, 0, 50)
-    bbg.StudsOffset = Vector3.new(0, 2.5, 0) -- Jarak di atas nama asli
+    bbg.StudsOffset = Vector3.new(0, 2.5, 0)
     bbg.AlwaysOnTop = true
     bbg.Parent = head
     
@@ -868,56 +820,43 @@ local function createOverheadTitle()
     tl.Parent = bbg
 end
 
--- 2. FUNGSI CHAT TAG INJECTOR
--- Mendukung TextChatService (Sistem Chat Baru Roblox)
+-- TextChatService Support
 local TextChatService = game:GetService("TextChatService")
 if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
     TextChatService.OnIncomingMessage = function(message)
-        local properties = Instance.new("TextChatMessageProperties")
+        local properties = TextChatServiceProperties.new()
         if identityEnabled and message.TextSource and message.TextSource.UserId == player.UserId then
             local config = roleConfigs[selectedRole]
-            -- Tag Berwarna + Nama Putih Default
             properties.PrefixText = "<font color='rgb("..math.floor(config.Color.R*255)..", "..math.floor(config.Color.G*255)..", "..math.floor(config.Color.B*255)..")'>" .. config.Text .. "</font> <font color='rgb(255,255,255)'>" .. message.PrefixText .. "</font>"
         end
         return properties
     end
 end
 
--- Mendukung LegacyChatService (Sistem Chat Lama Roblox)
+-- LegacyChatService Support (FIXED)
 pcall(function()
-    local ChatService = require(game:GetService("ServerScriptService")
-        :WaitForChild("ChatServiceRunner")
-        :WaitForChild("ChatService"))
-
+    local ChatService = require(game:GetService("ServerScriptService"):WaitForChild("ChatServiceRunner"):WaitForChild("ChatService"))
     ChatService.SpeakerAdded:Connect(function(speakerName)
         if speakerName == player.Name then
             local speaker = ChatService:GetSpeaker(speakerName)
-
             RunService.Heartbeat:Connect(function()
                 if identityEnabled then
                     local config = roleConfigs[selectedRole]
-                    speaker:SetExtraData("Tags", {
-                        {
-                            TagText = config.Text,
-                            TagColor = config.Color
-                        }
-                    })
+                    speaker:SetExtraData("Tags", {{TagText = config.Text, TagColor = config.Color}})
                     speaker:SetExtraData("NameColor", Color3.fromRGB(255, 255, 255))
                 else
-                    speaker:SetExtraData("Tags", {})
+                    speaker:SetExtraData("Tags", nil)
                 end
-            end)
+            end) -- Diperbaiki dari </run> menjadi end)
         end
     end)
 end)
 
--- Loop agar Title di atas kepala selalu terpasang saat respawn
 player.CharacterAdded:Connect(function()
     task.wait(1)
     if identityEnabled then createOverheadTitle() end
 end)
 
--- 3. DROP-DOWN SELEKSI ROLE
 SettTab:Dropdown({
     Title = "Select Role / Title",
     Icon = "user-cog",
@@ -925,12 +864,11 @@ SettTab:Dropdown({
     Callback = function(v)
         selectedRole = v
         if identityEnabled then
-            createOverheadTitle() -- Langsung update title jika aktif
+            createOverheadTitle()
         end
     end
 })
 
--- 4. TOGGLE UTAMA IDENTITY FITUR
 identityToggle = SettTab:Toggle({
     Title = "Identity System (Inactive)",
     Icon = "shield",
@@ -944,7 +882,6 @@ identityToggle = SettTab:Toggle({
         if v then
             createOverheadTitle()
         else
-            -- Hapus title jika dimatikan
             local char = player.Character
             local head = char and char:FindFirstChild("Head")
             if head and head:FindFirstChild("ApexTitle") then
