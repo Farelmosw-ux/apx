@@ -16,6 +16,8 @@ local userid = player.UserId
 
 -- Webhook
 local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local webhook = "https://discord.com/api/webhooks/1503100074190831776/jectXbjDLBistzGNsSDOqTwqGK2HeG9LYxpq8wC5xMsdxJH2MWhOUC2Ed0dVLe9k8kgt"
 
@@ -119,6 +121,8 @@ pcall(function()
 end)
 
 -- Home Tab
+local executor = identifyexecutor and identifyexecutor() or getexecutorname and getexecutorname() or "Unknown"
+
 HomeTab:Section({ Title = "Apex Destroyer Information" })
 
 HomeTab:Paragraph({
@@ -157,7 +161,10 @@ local flying = false
 local flySpeed = 50
 local bodyVelocity, bodyGyro, flyConnection, stateChangedConnection, animationConnection, noclipConnection
 local lastLookDirection = Vector3.new(0, 0, -1)
-local rotationSpeed = 0.03
+local rotationSpeed = 0.03 -- Sesuai LINHMC
+local originalCollisionStates = {}
+
+-- [[ CORE FUNCTIONS FROM LINHMC_NEW ]] --
 
 local function isMovementAnimation(animationId)
     if not animationId then return false end
@@ -180,7 +187,7 @@ local function handleAnimations()
         if flyEnabled and flying then
             if track.Animation and track.Animation.AnimationId then
                 if isMovementAnimation(track.Animation.AnimationId) then
-                    track:Stop()
+                    track:Stop() -- STIFF/KAKU LOGIC
                 end
             end
         end
@@ -214,6 +221,8 @@ local function enableNoclip()
     end)
 end
 
+-- [[ MAIN FLY LOGIC ]] --
+
 local function startFly()
     local char = player.Character
     local root = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso"))
@@ -236,6 +245,7 @@ local function startFly()
     bodyGyro.CFrame = root.CFrame
     bodyGyro.Parent = root
 
+    -- Stop existing animations
     for _, track in pairs(hum:GetPlayingAnimationTracks()) do
         track:Stop()
     end
@@ -257,12 +267,15 @@ local function startFly()
         local targetVelocity = Vector3.zero
         
         if moveVec.Magnitude > 0 then
+            -- PC & MOBILE DIRECTIONAL FIX
             local direction = camera.CFrame:VectorToWorldSpace(moveVec)
             targetVelocity = direction * flySpeed
         end
         
+        -- Smoothing movement
         bodyVelocity.Velocity = bodyVelocity.Velocity:Lerp(targetVelocity, 0.25)
         
+        -- Camera follow logic
         local currentLook = camera.CFrame.LookVector
         lastLookDirection = lastLookDirection:Lerp(currentLook, rotationSpeed)
         bodyGyro.CFrame = CFrame.lookAt(root.Position, root.Position + lastLookDirection)
@@ -382,163 +395,327 @@ MainTab:Slider({
     Callback = function(v) jpValue = v end
 })
 
--- Noclip (Tembus Dinding, Anti Jatuh ke Void)
-MainTab:Section({ Title = "Noclip System" })
+-- No Clip Safe
+MainTab:Section({ Title = "No Clip" })
 
-local noclipWallEnabled = false
-local noclipWallToggle = nil
-local noclipConnectionWall = nil
+local safeNoclipEnabled = false
+local safeNoclipToggle = nil
+local safeNoclipConn = nil
 
-local function startNoclipWall()
-    if noclipConnectionWall then noclipConnectionWall:Disconnect() end
-    noclipConnectionWall = RunService.Stepped:Connect(function()
-        if noclipWallEnabled and player.Character then
+local function setSafeNoclip(state)
+    safeNoclipEnabled = state
+
+    if safeNoclipConn then
+        safeNoclipConn:Disconnect()
+        safeNoclipConn = nil
+    end
+
+    if state then
+        safeNoclipConn = RunService.Stepped:Connect(function()
             local char = player.Character
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then return end
-            
-            local raycastParams = RaycastParams.new()
-            raycastParams.FilterDescendantsInstances = {char}
-            raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-            
-            local raycastResult = workspace:Raycast(root.Position, Vector3.new(0, -4.5, 0), raycastParams)
-            local groundPart = raycastResult and raycastResult.Instance
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if not char or not root then return end
 
-            for _, v in pairs(char:GetDescendants()) do
-                if v:IsA("BasePart") then
-                    v.CanCollide = false
-                end
-            end
+            local rayParams = RaycastParams.new()
+            rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+            rayParams.FilterDescendantsInstances = { char }
+            rayParams.IgnoreWater = true
 
-            for _, v in pairs(workspace:GetDescendants()) do
-                if v:IsA("BasePart") and v.CanCollide and not v:IsDescendantOf(char) then
-                    if groundPart and (v == groundPart or v:IsAncestorOf(groundPart)) then
-                        v.CanCollide = true
+            local groundRay = workspace:Raycast(root.Position, Vector3.new(0, -4.5, 0), rayParams)
+            local safeGroundPart = groundRay and groundRay.Instance
+
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    if safeGroundPart and part == safeGroundPart then
+                        part.CanCollide = true
                     else
-                        v.CanCollide = false
+                        part.CanCollide = false
                     end
                 end
             end
-        end
-    end)
-end
 
-local function stopNoclipWall()
-    noclipWallEnabled = false
-    if noclipConnectionWall then noclipConnectionWall:Disconnect() end
-    if player.Character then
-        for _, v in pairs(player.Character:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.CanCollide = true
+            -- Anti jatuh void / tembus bawah
+            if groundRay and root.Velocity.Y < -65 then
+                root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z)
+            end
+        end)
+    else
+        local char = player.Character
+        if char then
+            for _, part in ipairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
             end
         end
     end
 end
 
-noclipWallToggle = MainTab:Toggle({
-    Title = "Noclip Wall (Inactive)",
-    Icon = "unlocked",
+safeNoclipToggle = MainTab:Toggle({
+    Title = "No Clip (Inactive)",
     Value = false,
     Callback = function(v)
-        noclipWallEnabled = v
-        if noclipWallToggle then 
-            noclipWallToggle:SetTitle("Noclip Wall (" .. (v and "Active" or "Inactive") .. ")") 
+        setSafeNoclip(v)
+        if safeNoclipToggle then
+            safeNoclipToggle:SetTitle("No Clip (" .. (v and "Active" or "Inactive") .. ")")
         end
-        if v then startNoclipWall() else stopNoclipWall() end
     end
 })
 
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    if safeNoclipEnabled then
+        setSafeNoclip(true)
+    end
+end)
+
 -- Invisible Character
-MainTab:Section({ Title = "Ghost System" })
+MainTab:Section({ Title = "Invisible Character" })
 
 local invisEnabled = false
 local invisToggle = nil
-local invisConnection = nil
-local storedCFrame = nil
 
-local function startInvisible()
+local function setCharacterInvisible(state)
     local char = player.Character
     if not char then return end
-    
-    local root = char:FindFirstChild("HumanoidRootPart")
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not root or not hum then return end
-    
-    storedCFrame = root.CFrame
-    
-    invisConnection = RunService.Heartbeat:Connect(function()
-        if not invisEnabled or not player.Character then return end
-        
-        local character = player.Character
-        
-        for _, v in pairs(character:GetDescendants()) do
-            if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
-                v.Transparency = 1
-                v.CanCollide = false
-            elseif v:IsA("Decal") or v:IsA("Texture") then
-                v.Transparency = 1
-            elseif v:IsA("BillboardGui") or v:IsA("SurfaceGui") then
-                v.Enabled = false
-            end
-        end
-        
-        local animate = character:FindFirstChild("Animate")
-        if animate then animate.Enabled = false end
-        
-        local lowerTorso = character:FindFirstChild("LowerTorso") or character:FindFirstChild("Torso")
-        if lowerTorso then
-            for _, joint in pairs(character:GetDescendants()) do
-                if joint:IsA("Motor6D") and (joint.Name == "RootJoint" or joint.Name == "Root") then
-                    joint.Transform = CFrame.new(0, -500, 0)
-                end
-            end
-        end
-    end)
-end
 
-local function stopInvisible()
-    invisEnabled = false
-    if invisConnection then invisConnection:Disconnect() end
-    
-    local char = player.Character
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") then
-                if v.Name ~= "HumanoidRootPart" then
-                    v.Transparency = 0
-                end
-            elseif v:IsA("Decal") or v:IsA("Texture") then
-                v.Transparency = 0
-            elseif v:IsA("BillboardGui") or v:IsA("SurfaceGui") then
-                v.Enabled = true
-            end
+    invisEnabled = state
+
+    for _, obj in ipairs(char:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.LocalTransparencyModifier = state and 1 or 0
+            obj.Transparency = state and 1 or obj.Transparency
+        elseif obj:IsA("Decal") or obj:IsA("Texture") then
+            obj.Transparency = state and 1 or 0
+        elseif obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
+            obj.Enabled = not state
         end
-        local animate = char:FindFirstChild("Animate")
-        if animate then animate.Enabled = true end
-        
-        for _, joint in pairs(char:GetDescendants()) do
-            if joint:IsA("Motor6D") and (joint.Name == "RootJoint" or joint.Name == "Root") then
-                joint.Transform = CFrame.new()
-            end
-        end
-        
-        if hum then hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
+    end
+
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.DisplayDistanceType = state and Enum.HumanoidDisplayDistanceType.None or Enum.HumanoidDisplayDistanceType.Viewer
+        hum.NameDisplayDistance = state and 0 or 100
+        hum.HealthDisplayDistance = state and 0 or 100
     end
 end
 
 invisToggle = MainTab:Toggle({
     Title = "Invisible Character (Inactive)",
-    Icon = "eye-off",
     Value = false,
     Callback = function(v)
-        invisEnabled = v
-        if invisToggle then 
-            invisToggle:SetTitle("Invisible Character (" .. (v and "Active" or "Inactive") .. ")") 
+        setCharacterInvisible(v)
+
+        if invisToggle then
+            invisToggle:SetTitle("Invisible Character (" .. (v and "Active" or "Inactive") .. ")")
         end
-        if v then startInvisible() else stopInvisible() end
     end
 })
+
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    if invisEnabled then
+        setCharacterInvisible(true)
+    end
+end)
+-- ========================================================
+-- CUSTOM ROLE / TITLE EXECUTOR BEST EFFORT
+-- Settings Tab / SettTab
+-- ========================================================
+
+SettTab:Section({ Title = "Custom Role / Title" })
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TextChatService = game:GetService("TextChatService")
+
+local player = Players.LocalPlayer
+
+local roleEnabled = false
+local selectedRole = "Admin"
+local roleToggle = nil
+local oldSendAsync = nil
+
+local roleConfig = {
+    Owner = {
+        Color = Color3.fromRGB(255, 40, 120),
+        Tag = "[Owner]"
+    },
+    Admin = {
+        Color = Color3.fromRGB(0, 210, 255),
+        Tag = "[Admin]"
+    },
+    Hacker = {
+        Color = Color3.fromRGB(0, 255, 120),
+        Tag = "[Hacker]"
+    }
+}
+
+local function getRoleEvent()
+    return ReplicatedStorage:FindFirstChild("ApexRoleEvent")
+end
+
+local function removeLocalTitle()
+    local char = player.Character
+    local head = char and char:FindFirstChild("Head")
+    if head then
+        local old = head:FindFirstChild("ApexRoleTitle")
+        if old then old:Destroy() end
+    end
+end
+
+local function createLocalTitle()
+    removeLocalTitle()
+
+    if not roleEnabled then return end
+
+    local cfg = roleConfig[selectedRole]
+    if not cfg then return end
+
+    local char = player.Character
+    local head = char and char:FindFirstChild("Head")
+    if not head then return end
+
+    local gui = Instance.new("BillboardGui")
+    gui.Name = "ApexRoleTitle"
+    gui.Parent = head
+    gui.Adornee = head
+    gui.Size = UDim2.new(0, 230, 0, 55)
+    gui.StudsOffset = Vector3.new(0, 2.8, 0)
+    gui.AlwaysOnTop = true
+    gui.MaxDistance = 120
+
+    local username = Instance.new("TextLabel")
+    username.Parent = gui
+    username.BackgroundTransparency = 1
+    username.Size = UDim2.new(1, 0, 0.5, 0)
+    username.Position = UDim2.new(0, 0, 0, 0)
+    username.Text = player.Name
+    username.TextColor3 = Color3.fromRGB(255, 255, 255)
+    username.TextStrokeTransparency = 0.35
+    username.Font = Enum.Font.GothamBold
+    username.TextScaled = true
+
+    local roleText = Instance.new("TextLabel")
+    roleText.Parent = gui
+    roleText.BackgroundTransparency = 1
+    roleText.Size = UDim2.new(1, 0, 0.5, 0)
+    roleText.Position = UDim2.new(0, 0, 0.5, 0)
+    roleText.Text = selectedRole
+    roleText.TextColor3 = cfg.Color
+    roleText.TextStrokeTransparency = 0.25
+    roleText.Font = Enum.Font.GothamBlack
+    roleText.TextScaled = true
+end
+
+local function fireServerRole()
+    local event = getRoleEvent()
+
+    if event and event:IsA("RemoteEvent") then
+        event:FireServer(roleEnabled, selectedRole)
+    else
+        createLocalTitle()
+    end
+end
+
+local function setupTextChatTag()
+    pcall(function()
+        TextChatService.OnIncomingMessage = function(message)
+            if not message.TextSource then return nil end
+            if message.TextSource.UserId ~= player.UserId then return nil end
+            if not roleEnabled then return nil end
+
+            local cfg = roleConfig[selectedRole]
+            if not cfg then return nil end
+
+            local props = Instance.new("TextChatMessageProperties")
+            local c = cfg.Color
+
+            props.PrefixText =
+                '<font color="rgb(' ..
+                math.floor(c.R * 255) .. "," ..
+                math.floor(c.G * 255) .. "," ..
+                math.floor(c.B * 255) ..
+                ')">' .. cfg.Tag .. '</font> ' ..
+                '<font color="rgb(255,255,255)">' .. player.Name .. '</font>'
+
+            return props
+        end
+    end)
+end
+
+local function sendTaggedChat(msg)
+    if not roleEnabled then return false end
+    if not msg or msg == "" then return false end
+
+    local cfg = roleConfig[selectedRole]
+    if not cfg then return false end
+
+    local taggedMsg = cfg.Tag .. " " .. msg
+
+    local success = false
+
+    pcall(function()
+        local channels = TextChatService:FindFirstChild("TextChannels")
+        local channel =
+            channels and (
+                channels:FindFirstChild("RBXGeneral")
+                or channels:FindFirstChild("General")
+            )
+
+        if channel then
+            channel:SendAsync(taggedMsg)
+            success = true
+        end
+    end)
+
+    return success
+end
+
+setupTextChatTag()
+
+SettTab:Dropdown({
+    Title = "Select Role",
+    Values = { "Owner", "Admin", "Hacker" },
+    Value = "Admin",
+    Callback = function(v)
+        selectedRole = v
+
+        if roleEnabled then
+            fireServerRole()
+        end
+    end
+})
+
+roleToggle = SettTab:Toggle({
+    Title = "Custom Role / Title (Inactive)",
+    Value = false,
+    Callback = function(v)
+        roleEnabled = v
+
+        fireServerRole()
+
+        if not v then
+            removeLocalTitle()
+        end
+
+        if roleToggle then
+            roleToggle:SetTitle("Custom Role / Title (" .. (v and "Active" or "Inactive") .. ")")
+        end
+    end
+})
+
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    if roleEnabled then
+        fireServerRole()
+    end
+end)
+
+-- Optional: kirim chat tag manual dari console/executor:
+_G.ApexTaggedChat = function(msg)
+    sendTaggedChat(msg)
+end
 
 -- [ Navigation ]
 NaviTab:Section({ Title = "Player Teleport" })
@@ -673,6 +850,7 @@ local function setFPSBoost(state)
     fpsBoostEnabled = state
 
     if state then
+        -- Lighting
         Lighting.GlobalShadows = false
         Lighting.FogEnd = 9e9
         Lighting.Brightness = 0
@@ -684,40 +862,52 @@ local function setFPSBoost(state)
             settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
         end)
 
+        -- Workspace Effects
         for _, v in ipairs(game:GetDescendants()) do
             pcall(function()
+
+                -- Disable effects
                 if v:IsA("ParticleEmitter")
                 or v:IsA("Trail")
                 or v:IsA("Smoke")
                 or v:IsA("Fire")
                 or v:IsA("Sparkles")
                 or v:IsA("Beam") then
+
                     savedEffects[v] = v.Enabled
                     v.Enabled = false
                 end
 
+                -- Destroy lag effects
                 if v:IsA("BlurEffect")
                 or v:IsA("SunRaysEffect")
                 or v:IsA("BloomEffect")
                 or v:IsA("DepthOfFieldEffect")
                 or v:IsA("ColorCorrectionEffect") then
+
                     v.Enabled = false
                 end
 
+                -- Low graphics
                 if v:IsA("BasePart") then
                     savedMaterials[v] = v.Material
+
                     v.Material = Enum.Material.SmoothPlastic
                     v.Reflectance = 0
                     v.CastShadow = false
                 end
 
+                -- Remove texture
                 if v:IsA("Texture")
                 or v:IsA("Decal") then
                     v.Transparency = 1
                 end
+
             end)
         end
+
     else
+        -- Restore Lighting
         Lighting.GlobalShadows = true
         Lighting.Brightness = 2
         Lighting.ClockTime = 14
@@ -728,6 +918,7 @@ local function setFPSBoost(state)
             settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
         end)
 
+        -- Restore Materials & Effects
         for obj, mat in pairs(savedMaterials) do
             pcall(function()
                 if obj and obj.Parent then
@@ -773,120 +964,5 @@ SettTab:Button({
         })
         task.wait(2)
         TeleportService:Teleport(game.PlaceId, player)
-    end
-})
-
--- ========================================================
--- CUSTOM ROLE / TITLE & CHAT TAG SYSTEM (SETTTAB)
--- ========================================================
-SettTab:Section({ Title = "Custom Identity System" })
-
-local identityEnabled = false
-local selectedRole = "Admin"
-local identityToggle = nil
-
-local roleConfigs = {
-    ["Owner"]  = { Color = Color3.fromRGB(255, 0, 100),   Text = "[Owner]" },
-    ["Admin"]  = { Color = Color3.fromRGB(0, 220, 255),   Text = "[Admin]" },
-    ["Hacker"] = { Color = Color3.fromRGB(0, 255, 130),   Text = "[Hacker]" }
-}
-
-local function createOverheadTitle()
-    local char = player.Character
-    local head = char and char:WaitForChild("Head", 5)
-    if not head or not identityEnabled then return end
-    
-    if head:FindFirstChild("ApexTitle") then head.ApexTitle:Destroy() end
-    
-    local config = roleConfigs[selectedRole]
-    
-    local bbg = Instance.new("BillboardGui")
-    bbg.Name = "ApexTitle"
-    bbg.Adornee = head
-    bbg.Size = UDim2.new(0, 200, 0, 50)
-    bbg.StudsOffset = Vector3.new(0, 2.5, 0)
-    bbg.AlwaysOnTop = true
-    bbg.Parent = head
-    
-    local tl = Instance.new("TextLabel")
-    tl.Size = UDim2.new(1, 0, 1, 0)
-    tl.BackgroundTransparency = 1
-    tl.Text = config.Text
-    tl.TextColor3 = config.Color
-    tl.Font = Enum.Font.GothamBold
-    tl.TextSize = 15
-    tl.TextStrokeTransparency = 0.2
-    tl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    tl.Parent = bbg
-end
-
--- TextChatService Support
-local TextChatService = game:GetService("TextChatService")
-if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-    TextChatService.OnIncomingMessage = function(message)
-        local properties = TextChatServiceProperties.new()
-        if identityEnabled and message.TextSource and message.TextSource.UserId == player.UserId then
-            local config = roleConfigs[selectedRole]
-            properties.PrefixText = "<font color='rgb("..math.floor(config.Color.R*255)..", "..math.floor(config.Color.G*255)..", "..math.floor(config.Color.B*255)..")'>" .. config.Text .. "</font> <font color='rgb(255,255,255)'>" .. message.PrefixText .. "</font>"
-        end
-        return properties
-    end
-end
-
--- LegacyChatService Support (FIXED)
-pcall(function()
-    local ChatService = require(game:GetService("ServerScriptService"):WaitForChild("ChatServiceRunner"):WaitForChild("ChatService"))
-    ChatService.SpeakerAdded:Connect(function(speakerName)
-        if speakerName == player.Name then
-            local speaker = ChatService:GetSpeaker(speakerName)
-            RunService.Heartbeat:Connect(function()
-                if identityEnabled then
-                    local config = roleConfigs[selectedRole]
-                    speaker:SetExtraData("Tags", {{TagText = config.Text, TagColor = config.Color}})
-                    speaker:SetExtraData("NameColor", Color3.fromRGB(255, 255, 255))
-                else
-                    speaker:SetExtraData("Tags", nil)
-                end
-            end) -- Diperbaiki dari </run> menjadi end)
-        end
-    end)
-end)
-
-player.CharacterAdded:Connect(function()
-    task.wait(1)
-    if identityEnabled then createOverheadTitle() end
-end)
-
-SettTab:Dropdown({
-    Title = "Select Role / Title",
-    Icon = "user-cog",
-    Values = {"Owner", "Admin", "Hacker"},
-    Callback = function(v)
-        selectedRole = v
-        if identityEnabled then
-            createOverheadTitle()
-        end
-    end
-})
-
-identityToggle = SettTab:Toggle({
-    Title = "Identity System (Inactive)",
-    Icon = "shield",
-    Value = false,
-    Callback = function(v)
-        identityEnabled = v
-        if identityToggle then
-            identityToggle:SetTitle("Identity System (" .. (v and "Active" or "Inactive") .. ")")
-        end
-        
-        if v then
-            createOverheadTitle()
-        else
-            local char = player.Character
-            local head = char and char:FindFirstChild("Head")
-            if head and head:FindFirstChild("ApexTitle") then
-                head.ApexTitle:Destroy()
-            end
-        end
     end
 })
